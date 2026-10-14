@@ -40,6 +40,33 @@ pub trait StateFrequencySum {
     ///
     /// As [`StateFrequencySum::convolve`].
     fn sum_even(&mut self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error>;
+
+    /// `sum_{m in Z} f_r(m)` for each row of an even `f` of shape `(nfreq, rows)` with any
+    /// number of rows (states outside the Fermi window in the Coulomb term).
+    /// Implementations reproducing EPW's coefficient cut apply it here.
+    ///
+    /// # Errors
+    ///
+    /// As [`StateFrequencySum::convolve`].
+    fn sum_even_rows(&mut self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error>;
+
+    /// Convolutions of the two parts of the normal Green's function,
+    /// `omega Z / Theta` (odd) and `xi / Theta` (even). Implementations that treat
+    /// them as one complex function (EPW's coefficient cut) override this.
+    ///
+    /// # Errors
+    ///
+    /// As [`StateFrequencySum::convolve`].
+    fn convolve_normal(
+        &mut self,
+        z: &TypedTensor<f64>,
+        xi: &TypedTensor<f64>,
+    ) -> Result<(TypedTensor<f64>, TypedTensor<f64>), Error> {
+        Ok((
+            self.convolve(z, Parity::Odd)?,
+            self.convolve(xi, Parity::Even)?,
+        ))
+    }
 }
 
 /// Electronic states, weights and the e-ph kernel of the anisotropic problem.
@@ -63,6 +90,9 @@ pub struct KernelEntry {
     pub s: usize,
     /// Column state.
     pub s_prime: usize,
+    /// Phonon wave vector index; entries with equal `(s, s_prime, q)` form one kernel row
+    /// (used by EPW's per-row IR coefficient cut).
+    pub q: usize,
     /// Phonon frequency (eV).
     pub omega: f64,
     /// Weight (eV^2 times the q weight).
@@ -94,7 +124,7 @@ impl AnisotropicModel {
     /// ```
     /// use eliashberg::{AnisotropicModel, KernelEntry};
     /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
-    ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, omega: 0.1, weight: 0.05 }] };
+    ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.1, weight: 0.05 }] };
     /// let l = m.kernel_matsubara(&[0.0])?;
     /// assert!((l.as_slice()?[0] - 1.0).abs() < 1e-15);
     /// # Ok::<(), eliashberg::Error>(())
@@ -137,7 +167,7 @@ impl UniformStateSum {
     /// ```
     /// use eliashberg::*;
     /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
-    ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, omega: 0.1, weight: 0.05 }] };
+    ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.1, weight: 0.05 }] };
     /// let sum = UniformStateSum::new(tenferro_cpu::CpuBackend::new(), &m, 0.01, 8)?;
     /// assert_eq!(sum.indices().len(), 8);
     /// # Ok::<(), eliashberg::Error>(())
@@ -211,6 +241,21 @@ impl StateFrequencySum for UniformStateSum {
             .with_backend_session(|s| [f, &twos].einsum("ms,m->s", s))?;
         Ok(out.as_slice()?.to_vec())
     }
+
+    fn sum_even_rows(&mut self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error> {
+        let nf = self.indices.len();
+        if f.shape().len() != 2 || f.shape()[0] != nf {
+            return Err(Error::InvalidInput(format!(
+                "expected shape ({nf}, rows), got {:?}",
+                f.shape()
+            )));
+        }
+        let twos = TypedTensor::from_vec_col_major(vec![nf], vec![2.0; nf])?;
+        let out = self
+            .backend
+            .with_backend_session(|s| [f, &twos].einsum("mr,m->r", s))?;
+        Ok(out.as_slice()?.to_vec())
+    }
 }
 
 pub(crate) fn check_shape(f: &TypedTensor<f64>, nf: usize, ns: usize) -> Result<(), Error> {
@@ -237,6 +282,23 @@ pub struct AnisotropicParams {
     pub mixing: f64,
 }
 
+/// Coulomb term with states beyond the Fermi window (EPW `icoulomb = 1`, static part).
+///
+/// It replaces the `mu*` term: every Fermi-window state gets
+/// `- W sum_j n_j sum_m Delta_j Z_j / Theta_j(m)` in `Z Delta`, where `j` runs over
+/// the Fermi-window states (multiplicity `n_j`) and over states outside it, which
+/// carry `Z = 1`, `chi = 0` and a common gap `Delta_c`, itself determined
+/// self-consistently by `Delta_c = -T W sum_j ...`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CoulombStates {
+    /// Weight `W = mu* / (N_F N_k)` of every state.
+    pub weight: f64,
+    /// Multiplicity of each Fermi-window state (length `nstates`).
+    pub inside_counts: Vec<f64>,
+    /// States outside the window: `(energy relative to mu, multiplicity)`.
+    pub outer: Vec<(f64, f64)>,
+}
+
 /// Converged anisotropic solution, arrays of shape `(nfreq, nstates)`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnisotropicSolution {
@@ -254,6 +316,8 @@ pub struct AnisotropicSolution {
     pub iterations: usize,
     /// Final relative change.
     pub residual: f64,
+    /// Gap of the states outside the window (Coulomb term), per frequency; empty without it.
+    pub outer_gap: Vec<f64>,
 }
 
 impl AnisotropicSolution {
@@ -264,7 +328,7 @@ impl AnisotropicSolution {
     ///
     /// ```
     /// let sol = eliashberg::AnisotropicSolution { omega: vec![1.0], z: vec![1.0], delta: vec![0.0],
-    ///     shift: vec![0.0], z_normal: vec![1.0], iterations: 1, residual: 0.0 };
+    ///     shift: vec![0.0], z_normal: vec![1.0], iterations: 1, residual: 0.0, outer_gap: vec![] };
     /// assert_eq!(sol.free_energy(&[1.0], 0.01), 0.0);
     /// ```
     pub fn free_energy(&self, state_weights: &[f64], temperature: f64) -> f64 {
@@ -296,7 +360,7 @@ impl AnisotropicSolution {
 /// use eliashberg::*;
 /// // One state at E_F coupled to itself: reduces to an Einstein model.
 /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
-///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, omega: 0.05, weight: 0.025 }] };
+///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.05, weight: 0.025 }] };
 /// let mut sum = UniformStateSum::new(tenferro_cpu::CpuBackend::new(), &m, 0.001, 64)?;
 /// let p = AnisotropicParams { mu_star: 0.0, conv_thr: 1e-8, max_iter: 5000, mixing: 0.5 };
 /// let sol = solve_anisotropic_fbw(&mut sum, &m, &p, |_| 0.005)?;
@@ -309,6 +373,48 @@ pub fn solve_anisotropic_fbw(
     params: &AnisotropicParams,
     initial_gap: impl Fn(f64) -> f64,
 ) -> Result<AnisotropicSolution, Error> {
+    solve_anisotropic_fbw_coulomb(sum, model, params, initial_gap, None)
+}
+
+/// [`solve_anisotropic_fbw`] with an optional [`CoulombStates`] term replacing `mu*`.
+///
+/// The gap of the outer states starts from `initial_gap` and is mixed like the
+/// other fields; convergence is judged on the Fermi-window gap only (as EPW).
+///
+/// # Errors
+///
+/// As [`solve_anisotropic_fbw`], plus [`Error::InvalidInput`] if
+/// `inside_counts` does not have one entry per state.
+///
+/// # Examples
+///
+/// ```
+/// use eliashberg::*;
+/// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
+///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.05, weight: 0.025 }] };
+/// let c = CoulombStates { weight: 0.01, inside_counts: vec![1.0], outer: vec![(1.0, 2.0)] };
+/// let mut sum = UniformStateSum::new(tenferro_cpu::CpuBackend::new(), &m, 0.001, 64)?;
+/// let p = AnisotropicParams { mu_star: 0.0, conv_thr: 1e-8, max_iter: 5000, mixing: 0.5 };
+/// let sol = solve_anisotropic_fbw_coulomb(&mut sum, &m, &p, |_| 0.005, Some(&c))?;
+/// assert!(sol.outer_gap[0] < 0.0); // repulsion gives the outer states the opposite sign
+/// # Ok::<(), eliashberg::Error>(())
+/// ```
+pub fn solve_anisotropic_fbw_coulomb(
+    sum: &mut dyn StateFrequencySum,
+    model: &AnisotropicModel,
+    params: &AnisotropicParams,
+    initial_gap: impl Fn(f64) -> f64,
+    coulomb_states: Option<&CoulombStates>,
+) -> Result<AnisotropicSolution, Error> {
+    if let Some(c) = coulomb_states {
+        if c.inside_counts.len() != model.nstates() {
+            return Err(Error::InvalidInput(format!(
+                "inside_counts has {} entries for {} states",
+                c.inside_counts.len(),
+                model.nstates()
+            )));
+        }
+    }
     if !(params.mixing > 0.0 && params.mixing <= 1.0) {
         return Err(Error::InvalidInput(format!(
             "mixing must be in (0, 1], got {}",
@@ -326,6 +432,10 @@ pub fn solve_anisotropic_fbw(
     let mut z_in = vec![1.0; len];
     let mut delta_in: Vec<f64> = (0..len).map(|i| initial_gap(omega[i % nf])).collect();
     let mut shift_in = vec![0.0; len];
+    let mut outer_in: Vec<f64> = match coulomb_states {
+        Some(_) => omega.iter().map(|&w| initial_gap(w)).collect(),
+        None => Vec::new(),
+    };
     let mut previous = delta_in.clone();
     let mut backend = CpuBackend::new();
     let coulomb = TypedTensor::from_vec_col_major(vec![ns, ns], {
@@ -359,13 +469,52 @@ pub fn solve_anisotropic_fbw(
             }
         }
         let d_src = tensor(d_src)?;
-        let z_conv = sum.convolve(&tensor(z_src)?, Parity::Odd)?;
+        let (z_conv, s_conv) = sum.convolve_normal(&tensor(z_src)?, &tensor(s_src)?)?;
         let z0_conv = sum.convolve(&tensor(z0_src)?, Parity::Odd)?;
         let d_conv = sum.convolve(&d_src, Parity::Even)?;
-        let s_conv = sum.convolve(&tensor(s_src)?, Parity::Even)?;
-        let d_sums = TypedTensor::from_vec_col_major(vec![ns], sum.sum_even(&d_src)?)?;
-        let mu_term = backend.with_backend_session(|s| [&coulomb, &d_sums].einsum("sq,q->s", s))?;
-        let mu_term = mu_term.as_slice()?;
+        // Static Coulomb part per state: mu* sum_{s'} M_{ss'} sum_m d_{s'}(m), or the
+        // CoulombStates sum (the same for every state).
+        let (mu_term, outer_out): (Vec<f64>, Vec<f64>) = match coulomb_states {
+            None => {
+                let d_sums = TypedTensor::from_vec_col_major(vec![ns], sum.sum_even(&d_src)?)?;
+                let m =
+                    backend.with_backend_session(|s| [&coulomb, &d_sums].einsum("sq,q->s", s))?;
+                (
+                    m.as_slice()?.iter().map(|v| params.mu_star * v).collect(),
+                    Vec::new(),
+                )
+            }
+            Some(c) => {
+                let inside = sum.sum_even_rows(&d_src)?;
+                let nouter = c.outer.len();
+                let mut outer_rows = vec![0.0; nf * nouter];
+                for (j, &(energy, _)) in c.outer.iter().enumerate() {
+                    for (m, (&w, &gap)) in omega.iter().zip(&outer_in).enumerate() {
+                        outer_rows[m + nf * j] = gap / (w * w + energy * energy + gap * gap);
+                    }
+                }
+                let outer = if nouter > 0 {
+                    sum.sum_even_rows(&TypedTensor::from_vec_col_major(
+                        vec![nf, nouter],
+                        outer_rows,
+                    )?)?
+                } else {
+                    Vec::new()
+                };
+                let total: f64 = inside
+                    .iter()
+                    .zip(&c.inside_counts)
+                    .map(|(v, n)| v * n)
+                    .sum::<f64>()
+                    + outer
+                        .iter()
+                        .zip(&c.outer)
+                        .map(|(v, (_, n))| v * n)
+                        .sum::<f64>();
+                let k = c.weight * total;
+                (vec![k; ns], vec![-t * k; nf])
+            }
+        };
 
         let (zc, z0c, dc, sc) = (
             z_conv.as_slice()?,
@@ -382,7 +531,7 @@ pub fn solve_anisotropic_fbw(
                 let i = n + nf * s;
                 z[i] = 1.0 + t * zc[i] / w;
                 z_normal[i] = 1.0 + t * z0c[i] / w;
-                delta[i] = t * (dc[i] - params.mu_star * coulomb_s) / z[i];
+                delta[i] = t * (dc[i] - coulomb_s) / z[i];
                 shift[i] = -t * sc[i];
             }
         }
@@ -402,7 +551,11 @@ pub fn solve_anisotropic_fbw(
                 z_normal,
                 iterations: iteration,
                 residual,
+                outer_gap: outer_out,
             });
+        }
+        for (i, o) in outer_in.iter_mut().zip(&outer_out) {
+            *i += params.mixing * (o - *i);
         }
         for (input, output) in [
             (&mut z_in, &z),

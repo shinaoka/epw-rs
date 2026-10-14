@@ -1,0 +1,427 @@
+Authorization required, but no authorization protocol specified
+
+Authorization required, but no authorization protocol specified
+
+Authorization required, but no authorization protocol specified
+
+                                                                                      
+                                       ``:oss/                                        
+                           `.+s+.     .+ys--yh+     `./ss+.                           
+                          -sh//yy+`   +yy   +yy    -+h+-oyy                           
+                          -yh- .oyy/.-sh.   .syo-.:sy-  /yh                           
+                 `.-.`    `yh+   -oyyyo.     `/syys:    oys      `.`                  
+               `/+ssys+-` `sh+      `                   oys`   .:osyo`                
+               -yh- ./syyooyo`                          .sys+/oyo--yh/                
+               `yy+    .-:-.                             `-/+/:`  -sh-                
+                /yh.                                              oys                 
+          ``..---hho---------`   .---------..`      `.-----.`    -hd+---.             
+       `./osmNMMMMMMMMMMMMMMMs. +NNMMMMMMMMNNmh+.   yNMMMMMNm-  oNMMMMMNmo++:`        
+       +sy--/sdMMMhyyyyyyyNMMh- .oyNMMmyyyyyhNMMm+` -yMMMdyyo:` .oyyNMMNhs+syy`       
+       -yy/   /MMM+.`-+/``mMMy-   `mMMh:`````.dMMN:` `MMMy-`-dhhy```mMMy:``+hs        
+        -yy+` /MMMo:-mMM+`-oo/.    mMMh:     `dMMN/`  dMMm:`dMMMMy..MMMo-.+yo`        
+         .sys`/MMMMNNMMMs-         mMMmyooooymMMNo:   oMMM/sMMMMMM++MMN//oh:          
+          `sh+/MMMhyyMMMs- `-`     mMMMMMMMMMNmy+-`   -MMMhMMMsmMMmdMMd/yy+           
+    `-/+++oyy-/MMM+.`/hh/.`mNm:`   mMMd+/////:-.`      NMMMMMd/:NMMMMMy:/yyo/:.`      
+   +os+//:-..-oMMMo:--:::-/MMMo. .-mMMd+---`           hMMMMN+. oMMMMMo. `-+osyso:`   
+   syo     `mNMMMMMNNNNNNNNMMMo.oNNMMMMMNNNN:`         +MMMMs:`  dMMMN/`     ``:syo   
+   /yh`     :syyyyyyyyyyyyyyyy+.`+syyyyyyyyo:`         .oyys:`   .oyys:`        +yh   
+   -yh-        ````````````````    `````````              ``        ``          oys   
+   -+h/------------------------::::::::://////++++++++++++++++++++++///////::::/yd:   
+   shdddddddddddddddddddddddddddddhhhhhhhhyyyyyssssssssssssssssyyyyyyyhhhhhhhddddh`   
+                                                                                      
+ Lee, H., Poncé, S., Bushick, K., Hajinazar, S., Lafuente-Bartolome, J.,Leveillee, J.,
+    Lian, C., Lihm, J., Macheda, F., Mori, H., Paudyal, H., Sio, W., Tiwari, S.,      
+ Zacharias, M., Zhang, X., Bonini, N., Kioupakis, E., Margine, E.R., and Giustino F., 
+                                                     npj Comput Mater 9, 156 (2023)   
+                                                                                      
+
+     Program EPW v.6.1 starts on 15Oct2026 at  7:32:14 
+        Git branch: HEAD
+        Last git commit: 9f93ddec427d2b9a45bb72d828c6d324f62fcabd
+        Last git commit date: Thu Jul 9 09:42:23 2026 +0200
+        Last git commit subject: setting version number to 7.6
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
+         "P. Giannozzi et al., J. Chem. Phys. 152 154105 (2020);
+          URL http://www.quantum-espresso.org", 
+     in publications or presentations arising from this work. More details at
+     http://www.quantum-espresso.org/quote
+
+     Parallel version (MPI), running on     1 processors
+
+     MPI processes distributed on     1 nodes
+     132061 MiB available memory on the printing compute node when the environment starts
+
+     Reading input from aniso_coul.in
+
+     Reading supplied temperature list.
+                      
+     ------------------------------------------------------------------------ 
+                   RESTART - RESTART - RESTART - RESTART                         
+     Restart is done without reading PWSCF save file.                  
+     Be aware that some consistency checks are therefore not done.                  
+     ------------------------------------------------------------------------ 
+                      
+
+     --                                                                         
+
+     bravais-lattice index     =            0
+     lattice parameter (a_0)   =       0.0000  a.u.
+     unit-cell volume          =       0.0000 (a.u.)^3
+     number of atoms/cell      =            0
+     number of atomic types    =            0
+     kinetic-energy cut-off    =       0.0000  Ry
+     charge density cut-off    =       0.0000  Ry
+     Exchange-correlation= not set
+                           (  -1  -1  -1  -1  -1  -1  -1)
+
+
+     celldm(1)=    0.00000  celldm(2)=    0.00000  celldm(3)=    0.00000
+     celldm(4)=    0.00000  celldm(5)=    0.00000  celldm(6)=    0.00000
+
+     crystal axes: (cart. coord. in units of a_0)
+               a(1) = (  0.0000  0.0000  0.0000 )  
+               a(2) = (  0.0000  0.0000  0.0000 )  
+               a(3) = (  0.0000  0.0000  0.0000 )  
+
+     reciprocal axes: (cart. coord. in units 2 pi/a_0)
+               b(1) = (  0.0000  0.0000  0.0000 )  
+               b(2) = (  0.0000  0.0000  0.0000 )  
+               b(3) = (  0.0000  0.0000  0.0000 )  
+
+
+     Atoms inside the unit cell: 
+
+   Cartesian axes
+
+     site n.  atom      mass           positions (a_0 units)
+
+
+     No symmetry!
+
+     G cutoff =    0.0000  (      0 G-vectors)     FFT grid: (  0,  0,  0)
+     number of k points=    0
+                       cart. coord. in units 2pi/a_0
+
+     ===================================================================
+     Solve full-bandwidth anisotropic Eliashberg equations
+     ===================================================================
+
+     eps_cut_ir =     1.000E-05 will be used for iterative calculations to solve the Eliashberg equations.
+
+     Finish reading freq file
+
+                  Fermi level (eV) =     7.6644971870E+00
+     DOS(states/spin/eV/Unit Cell) =     9.1349618307E-01
+            Electron smearing (eV) =     1.0000000000E-01
+                 Fermi window (eV) =     2.0000000000E+01
+     Nr irreducible k-points within the Fermi shell =        28 out of        28
+
+           5 bands within the Fermi window
+
+
+     Finish reading egnv file 
+
+
+     Max nr of q-points =       216
+
+
+     Finish reading ikmap files
+
+
+     Start reading .ephmat files
+
+
+     Finish reading .ephmat files
+
+
+     Start reading nscf file for Coulomb
+
+
+     Finish reading nscf file for Coulomb
+
+
+     k-grid read from ./MgB2.bands.6x6x6.dat :    6   6   6
+     Nr irreducible k-points read from ./MgB2.bands.6x6x6.dat :        28
+     Minimum eigenvalue of bands taken from the file (eV) =    -4.8621369087E+00
+     Maximum eigenvalue of bands taken from the file (eV) =     1.9700189028E+01
+     emin_coulomb + "Fermi level" (eV)                    =    -2.3355028130E+00
+     emax_coulomb + "Fermi level" (eV)                    =     1.7664497187E+01
+     Only states taken from nscf file between      -2.335503 eV and      17.664497 eV
+     will be included in the Eliashberg calculations.
+           8 bands in the interval [emin_coulomb + "Fermi level", emax_coulomb + "Fermi level"]
+
+
+     ekfs is in agreement with ek_cl within a difference of   6.49E+00 eV.
+
+
+     WARNING: The difference between ekfs and ek_cl is large on some of k points.
+
+     a2f file is found and will be used to estimate initial gap
+ 
+
+     Finish reading a2f file
+
+     Electron-phonon coupling strength =    0.8714773
+ 
+     muc = 0.15 is used in the following estimations
+
+     Estimated Tc using McMillan expression =  28.4685 K for muc =   0.2000
+  
+     Estimated Tc using Allen-Dynes modified McMillan expression =  29.6441 K
+  
+     Estimated Tc using SISSO machine learning model =  31.8366 K
+  
+     Estimated w_log =  61.4876 meV
+  
+     Estimated BCS superconducting gap using McMillan Tc =   4.3177 meV
+  
+  
+     WARNING WARNING WARNING 
+  
+     The code may crash since tempsmax =   30.000 K is larger than McMillan Tc =    28.469 K
+
+     Start reading ir object file
+
+
+     Finish reading ir object file
+
+     Actual number of frequency points (     1) =     31 for sparse-ir     sampling
+    
+     temp(  1) =     20.00000 K
+    
+     Solve full-bandwidth anisotropic Eliashberg equations on imaginary-axis
+    
+     Total number of frequency points nsiw(     1) =     31
+     Parameters for IR basis: Lambda =     1.00E+05, eps_IR =     1.00E-06
+     The noise reduction will be performed using the threshold of     1.00E-05
+     Maximum frequency =      1017.8750 eV
+     linear mixing factor =      0.50000
+     mixing factor = 0.2 is used for the first five iterations.
+    
+        iter      ethr          znormi      deltai [meV]   shifti [meV]       mu [eV]
+          1   2.834243E+00   1.689283E+00   3.201702E+00   2.729094E+00   7.664497E+00
+          2   5.769833E-02   1.724268E+00   3.647816E+00   5.357742E+00   7.664497E+00
+          3   6.110630E-02   1.747204E+00   4.090709E+00   7.482771E+00   7.664497E+00
+          4   7.277306E-02   1.761401E+00   4.591580E+00   9.139633E+00   7.664497E+00
+          5   9.249204E-02   1.769381E+00   5.224663E+00   1.030785E+01   7.664497E+00
+          6   1.136171E-01   1.772740E+00   6.049584E+00   1.085193E+01   7.664497E+00
+          7   2.415095E-01   1.766739E+00   8.306175E+00   8.854926E+00   7.664497E+00
+          8   1.432790E-01   1.746364E+00   9.748865E+00   8.481559E+00   7.664497E+00
+          9   9.961922E-02   1.729300E+00   1.083885E+01   9.151692E+00   7.664497E+00
+         10   6.761951E-02   1.715056E+00   1.163984E+01   9.766253E+00   7.664497E+00
+         11   4.560198E-02   1.703745E+00   1.220612E+01   1.022123E+01   7.664497E+00
+         12   3.121834E-02   1.695189E+00   1.260126E+01   1.053099E+01   7.664497E+00
+         13   2.162260E-02   1.688933E+00   1.287860E+01   1.073461E+01   7.664497E+00
+         14   1.531256E-02   1.684447E+00   1.307487E+01   1.086771E+01   7.664497E+00
+         15   1.096843E-02   1.681261E+00   1.321525E+01   1.095553E+01   7.664497E+00
+         16   7.980857E-03   1.679004E+00   1.331621E+01   1.101456E+01   7.664497E+00
+         17   5.799274E-03   1.677404E+00   1.338942E+01   1.105503E+01   7.664497E+00
+         18   4.230749E-03   1.676266E+00   1.344275E+01   1.108335E+01   7.664497E+00
+         19   3.093511E-03   1.675451E+00   1.348170E+01   1.110352E+01   7.664497E+00
+         20   2.264324E-03   1.674865E+00   1.351021E+01   1.111807E+01   7.664497E+00
+         21   1.641078E-03   1.674442E+00   1.353119E+01   1.112867E+01   7.664497E+00
+         22   1.219327E-03   1.674134E+00   1.354651E+01   1.113646E+01   7.664497E+00
+         23   8.911807E-04   1.673911E+00   1.355773E+01   1.114216E+01   7.664497E+00
+         24   6.526339E-04   1.673747E+00   1.356594E+01   1.114635E+01   7.664497E+00
+         25   4.766911E-04   1.673628E+00   1.357196E+01   1.114943E+01   7.664497E+00
+         26   3.492436E-04   1.673541E+00   1.357637E+01   1.115169E+01   7.664497E+00
+         27   2.555889E-04   1.673477E+00   1.357959E+01   1.115334E+01   7.664497E+00
+         28   2.613022E-04   1.673430E+00   1.358147E+01   1.115456E+01   7.664497E+00
+         29   1.110200E-04   1.673398E+00   1.358313E+01   1.115530E+01   7.664497E+00
+         30   8.916090E-05   1.673374E+00   1.358435E+01   1.115588E+01   7.664497E+00
+         31   6.794831E-05   1.673357E+00   1.358523E+01   1.115632E+01   7.664497E+00
+         32   5.062376E-05   1.673344E+00   1.358588E+01   1.115664E+01   7.664497E+00
+         33   3.734258E-05   1.673335E+00   1.358636E+01   1.115689E+01   7.664497E+00
+         34   2.742533E-05   1.673328E+00   1.358671E+01   1.115707E+01   7.664497E+00
+         35   2.010283E-05   1.673323E+00   1.358696E+01   1.115720E+01   7.664497E+00
+         36   1.472293E-05   1.673319E+00   1.358715E+01   1.115729E+01   7.664497E+00
+         37   1.077895E-05   1.673316E+00   1.358728E+01   1.115736E+01   7.664497E+00
+         38   7.890418E-06   1.673314E+00   1.358738E+01   1.115742E+01   7.664497E+00
+         39   5.775736E-06   1.673313E+00   1.358746E+01   1.115745E+01   7.664497E+00
+         40   4.227812E-06   1.673312E+00   1.358751E+01   1.115748E+01   7.664497E+00
+         41   3.094787E-06   1.673311E+00   1.358755E+01   1.115750E+01   7.664497E+00
+         42   2.265444E-06   1.673310E+00   1.358758E+01   1.115752E+01   7.664497E+00
+         43   1.658373E-06   1.673310E+00   1.358760E+01   1.115753E+01   7.664497E+00
+         44   1.213992E-06   1.673310E+00   1.358761E+01   1.115754E+01   7.664497E+00
+         45   8.886931E-07   1.673310E+00   1.358763E+01   1.115754E+01   7.664497E+00
+         46   6.505628E-07   1.673309E+00   1.358763E+01   1.115755E+01   7.664497E+00
+         47   4.762412E-07   1.673309E+00   1.358764E+01   1.115755E+01   7.664497E+00
+         48   3.486297E-07   1.673309E+00   1.358764E+01   1.115755E+01   7.664497E+00
+         49   2.552121E-07   1.673309E+00   1.358765E+01   1.115755E+01   7.664497E+00
+         50   1.868259E-07   1.673309E+00   1.358765E+01   1.115755E+01   7.664497E+00
+         51   1.367642E-07   1.673309E+00   1.358765E+01   1.115755E+01   7.664497E+00
+         52   1.001168E-07   1.673309E+00   1.358765E+01   1.115755E+01   7.664497E+00
+         53   7.328930E-08   1.673309E+00   1.358765E+01   1.115756E+01   7.664497E+00
+         54   5.365050E-08   1.673309E+00   1.358765E+01   1.115756E+01   7.664497E+00
+         55   3.927414E-08   1.673309E+00   1.358765E+01   1.115756E+01   7.664497E+00
+         56   2.875009E-08   1.673309E+00   1.358765E+01   1.115756E+01   7.664497E+00
+         57   2.104609E-08   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         58   1.540649E-08   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         59   1.127809E-08   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         60   8.255961E-09   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         61   6.043648E-09   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         62   4.424170E-09   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         63   3.238638E-09   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         64   2.370794E-09   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         65   1.735504E-09   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         66   1.270451E-09   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         67   9.300151E-10   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         68   6.807955E-10   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         69   4.983804E-10   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         70   3.648242E-10   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         71   2.670614E-10   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         72   1.954993E-10   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         73   1.431071E-10   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         74   1.047600E-10   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+         75   7.669472E-11   1.673309E+00   1.358766E+01   1.115756E+01   7.664497E+00
+     Convergence was reached in nsiter =     75
+ 
+     Chemical potential (itemp =   1) =     7.6644971870E+00 eV
+ 
+     Temp (itemp =   1) =   20.000 K  Free energy =    -0.125777 meV
+ 
+     Min. / Max. values of superconducting gap =     2.037475   27.220377 meV
+     iaxis_imag   :    135.46s CPU    533.67s WALL (       1 calls)
+ 
+     itemp =   1   total cpu time :            533.67 secs
+ 
+     Actual number of frequency points (     2) =     31 for sparse-ir     sampling
+    
+     temp(  2) =     30.00000 K
+    
+     Solve full-bandwidth anisotropic Eliashberg equations on imaginary-axis
+    
+     Total number of frequency points nsiw(     2) =     31
+     Parameters for IR basis: Lambda =     1.00E+05, eps_IR =     1.00E-06
+     The noise reduction will be performed using the threshold of     1.00E-05
+     Maximum frequency =      1526.8125 eV
+     linear mixing factor =      0.50000
+     mixing factor = 0.2 is used for the first five iterations.
+    
+        iter      ethr          znormi      deltai [meV]   shifti [meV]       mu [eV]
+          1   3.286724E+00   1.662445E+00   9.150916E+00   6.870051E+00   7.664497E+00
+          2   4.804931E-02   1.687774E+00   9.847259E+00   9.987478E+00   7.664497E+00
+          3   3.883203E-02   1.703710E+00   1.045454E+01   1.195604E+01   7.664497E+00
+          4   2.862063E-02   1.712480E+00   1.107264E+01   1.284001E+01   7.664497E+00
+          5   2.070921E-02   1.715442E+00   1.166303E+01   1.282663E+01   7.664497E+00
+          6   1.614486E-02   1.714063E+00   1.212386E+01   1.233691E+01   7.664497E+00
+          7   3.613831E-02   1.702946E+00   1.273110E+01   1.104137E+01   7.664497E+00
+          8   1.302660E-02   1.691886E+00   1.300324E+01   1.096407E+01   7.664497E+00
+          9   7.658099E-03   1.684396E+00   1.316472E+01   1.106393E+01   7.664497E+00
+         10   5.938406E-03   1.679583E+00   1.326444E+01   1.114043E+01   7.664497E+00
+         11   4.535157E-03   1.676581E+00   1.332894E+01   1.118381E+01   7.664497E+00
+         12   3.368900E-03   1.674736E+00   1.337350E+01   1.120644E+01   7.664497E+00
+         13   2.521027E-03   1.673600E+00   1.340588E+01   1.121857E+01   7.664497E+00
+         14   1.984887E-03   1.672889E+00   1.342967E+01   1.122593E+01   7.664497E+00
+         15   1.507898E-03   1.672432E+00   1.344750E+01   1.123105E+01   7.664497E+00
+         16   1.127930E-03   1.672128E+00   1.346097E+01   1.123504E+01   7.664497E+00
+         17   8.419856E-04   1.671920E+00   1.347112E+01   1.123835E+01   7.664497E+00
+         18   6.260912E-04   1.671772E+00   1.347875E+01   1.124110E+01   7.664497E+00
+         19   4.638421E-04   1.671665E+00   1.348444E+01   1.124335E+01   7.664497E+00
+         20   3.422725E-04   1.671586E+00   1.348868E+01   1.124515E+01   7.664497E+00
+         21   2.520248E-04   1.671528E+00   1.349181E+01   1.124656E+01   7.664497E+00
+         22   1.852228E-04   1.671485E+00   1.349413E+01   1.124765E+01   7.664497E+00
+         23   1.359804E-04   1.671453E+00   1.349583E+01   1.124847E+01   7.664497E+00
+         24   9.976757E-05   1.671429E+00   1.349708E+01   1.124908E+01   7.664497E+00
+         25   7.316051E-05   1.671411E+00   1.349800E+01   1.124954E+01   7.664497E+00
+         26   5.364924E-05   1.671398E+00   1.349868E+01   1.124987E+01   7.664497E+00
+         27   3.934247E-05   1.671389E+00   1.349917E+01   1.125012E+01   7.664497E+00
+         28   2.885230E-05   1.671382E+00   1.349954E+01   1.125030E+01   7.664497E+00
+         29   2.116449E-05   1.671376E+00   1.349980E+01   1.125044E+01   7.664497E+00
+         30   1.583367E-05   1.671373E+00   1.350000E+01   1.125053E+01   7.664497E+00
+         31   1.128682E-05   1.671370E+00   1.350014E+01   1.125060E+01   7.664497E+00
+         32   8.314905E-06   1.671368E+00   1.350025E+01   1.125066E+01   7.664497E+00
+         33   6.112123E-06   1.671366E+00   1.350032E+01   1.125069E+01   7.664497E+00
+         34   4.488624E-06   1.671365E+00   1.350038E+01   1.125072E+01   7.664497E+00
+         35   3.294992E-06   1.671364E+00   1.350042E+01   1.125074E+01   7.664497E+00
+         36   2.418337E-06   1.671364E+00   1.350045E+01   1.125076E+01   7.664497E+00
+         37   1.774780E-06   1.671363E+00   1.350047E+01   1.125077E+01   7.664497E+00
+         38   1.302437E-06   1.671363E+00   1.350049E+01   1.125078E+01   7.664497E+00
+         39   9.557873E-07   1.671363E+00   1.350050E+01   1.125078E+01   7.664497E+00
+         40   7.013941E-07   1.671363E+00   1.350051E+01   1.125079E+01   7.664497E+00
+         41   5.147079E-07   1.671362E+00   1.350052E+01   1.125079E+01   7.664497E+00
+         42   3.777098E-07   1.671362E+00   1.350052E+01   1.125079E+01   7.664497E+00
+         43   2.771756E-07   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         44   2.034000E-07   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         45   1.492611E-07   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         46   1.095323E-07   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         47   8.037801E-08   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         48   5.898373E-08   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         49   4.328402E-08   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         50   3.176307E-08   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         51   2.330869E-08   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         52   1.710461E-08   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         53   1.255185E-08   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         54   9.210933E-09   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         55   6.759263E-09   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         56   4.960130E-09   1.671362E+00   1.350053E+01   1.125080E+01   7.664497E+00
+         57   3.639891E-09   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         58   2.671071E-09   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         59   1.960097E-09   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         60   1.438392E-09   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         61   1.055528E-09   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         62   7.745712E-10   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         63   5.684160E-10   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         64   4.171072E-10   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         65   3.060886E-10   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         66   2.246188E-10   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         67   1.648309E-10   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         68   1.209660E-10   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+         69   8.876603E-11   1.671362E+00   1.350054E+01   1.125080E+01   7.664497E+00
+     Convergence was reached in nsiter =     69
+ 
+     Chemical potential (itemp =   2) =     7.6644971870E+00 eV
+ 
+     Temp (itemp =   2) =   30.000 K  Free energy =    -0.109032 meV
+ 
+     Min. / Max. values of superconducting gap =     2.000376   27.038918 meV
+     iaxis_imag   :    260.26s CPU   1033.15s WALL (       2 calls)
+ 
+     itemp =   2   total cpu time :           1033.15 secs
+ 
+
+     Unfolding on the coarse grid
+
+     INITIALIZATION: 
+
+
+
+
+     Electron-Phonon interpolation
+
+
+     ELIASHBERG   :    260.38s CPU   1033.66s WALL (       1 calls)
+
+
+     Total program execution
+     EPW          :   4m20.38s CPU  17m13.66s WALL
+
+     % Copyright (C) 2016-2023 EPW-Collaboration                                    
+                                                                                    
+     ===============================================================================
+     Please consider citing the following papers.                                   
+                                                                                                 
+     % Paper describing the method on which EPW relies                                           
+       F. Giustino and M. L. Cohen and S. G. Louie, Phys. Rev. B 76, 165108 (2007)               
+                                                                                                 
+     % Papers describing the EPW software                                                        
+       H. Lee et al., npj Comput. Mater. 9, 156 (2023)                                           
+       S. Ponc\'e, E.R. Margine, C. Verdi and F. Giustino, Comput. Phys. Commun. 209, 116 (2016) 
+       J. Noffsinger et al., Comput. Phys. Commun. 181, 2140 (2010)                              
+                                                                                                 
+                                                                                             
+     % Since you used the [eliashberg] input,     please consider also citing                    
+       E. R. Margine and F. Giustino, Phys. Rev. B 87, 024505 (2013)                         
+     % Since you used the [gridsamp=2] input,     please consider also citing              
+       M. Wallerberger et al., SoftwareX 21, 101266 (2023)                                 
+       H. Mori, T. Nomoto, R. Arita, and E. R. Margine, Phys. Rev. B. 110, 064505 (2024)   
+                                                                                    
+     For your convenience, this information is also reported in the                 
+     functionality-dependent EPW.bib file.                                          
+     ===============================================================================
+                                                                                    
+Note: The following floating-point exceptions are signalling: IEEE_UNDERFLOW_FLAG IEEE_DENORMAL

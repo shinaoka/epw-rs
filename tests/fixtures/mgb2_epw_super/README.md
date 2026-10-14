@@ -20,7 +20,12 @@ Generated with **Quantum ESPRESSO 7.6** (tag `qe-7.6`, commit `9f93ddec427d2b9a4
 | `aniso/MgB2.ephmat/*`, `aniso/selecq.fmt`, `aniso/MgB2.a2f` | Written by `epw.x` running the unmodified `epw1.in` and `epw2.in`. `ephmat1` (10.9 MB) holds |g|^2/(2 omega) on the Fermi surface. |
 | `aniso/ir_nlambda5_ndigit6.dat` | Verbatim copy of `EPW/irobjs/ir_nlambda5_ndigit6.dat` from QE 7.6 (IR basis for Lambda = 1e5, epsilon = 1e-6, made with the Python sparse-ir package; part of EPW). |
 | `aniso/uni/aniso_uni.in`, `aniso/ir/aniso_ir.in` | **Modified** from `epw6.in` and `epw7.in` by us: `conv_thr_iaxis = 1e-10`, `temps = 20 30`, `nsiter = 5000`, `lpade = .false.`, `filirobj` set to an absolute path, and for `aniso_uni.in` `broyden_beta = -0.3` (linear mixing; Broyden mixing did not reach 1e-10). |
-| `aniso/uni/*`, `aniso/ir/*` (other files) | Output of `epw.x` for those inputs: standard output and `MgB2.imag_aniso_<T>` (omega, e - E_F, Z, Delta, chi for every Fermi-window state). |
+| `aniso/coul/aniso_coul.in` | **Modified** from `epw8.in` (Coulomb term, `muc = 0.20`, linear mixing) in the same way (tight threshold, `temps = 20 30`, no Padé). |
+| `aniso/ir_nocut/aniso_ir_nocut.in` | `aniso_ir.in` with `eps_cut_ir = 0.0`. |
+| `aniso/pade_uni/aniso_pade_uni.in`, `aniso/pade_ir/aniso_pade_ir.in` | `aniso_uni.in` and `aniso_ir.in` with `lpade = .true.` and `iverbosity = 2`. |
+| `aniso/MgB2.bands.6x6x6.dat` | Written by `nscf2supercond.x` (unmodified `nscf2supercond.in`) after `nscf_outerbands.in`. |
+| `aniso/pade_*/MgB2.pade_aniso_<T>.every100` | **Extract** of EPW's 45 MB `MgB2.pade_aniso_<T>`: the header and every 100th real frequency of every state (`awk 'NR==1 {print; next} ((NR-1) % 100 == 0)'`). |
+| `aniso/uni/*`, `aniso/ir/*`, `aniso/coul/*`, `aniso/ir_nocut/*`, `aniso/pade_*/*` (other files) | Output of `epw.x` for those inputs: standard output and `MgB2.imag_aniso_<T>` (omega, e - E_F, Z, Delta, chi for every Fermi-window state). |
 | `iso/fsr/*`, `iso/fbw/*` (other files) | Output of `epw.x` for those inputs: standard output and `MgB2.imag_iso_<T>` (omega, Z, Delta and, for FBW, chi). |
 
 ## How it was generated (2026-10-15)
@@ -42,4 +47,6 @@ There is no script yet; the steps are manual:
 
 - FSR and FBW: Z, Delta (and chi) agree with EPW to a relative 5e-11 at every Matsubara frequency, for both temperatures (`crates/eliashberg/tests/mgb2_isotropic.rs`). The FSR free energy and the McMillan T_c agree to the printed digits.
 - Anisotropic FBW, uniform grid: Z, Delta and chi agree with EPW to 5e-10 of their largest value for all 140 states and all frequencies at 20 and 30 K; the free energies agree to the printed digits (`crates/eph-driver/tests/mgb2_anisotropic.rs`).
+- Anisotropic FBW, IR with EPW's sampling points, odd-size handling and coefficient cut: agreement to 1e-8 (`eps_cut_ir = 1e-5`) and 5e-10 (`eps_cut_ir = 0`). With the Coulomb term: 3e-10, free energies to the printed digits.
+- Padé: gap edges and Delta at 23 meV agree with EPW within the conditioning of the continuation (measured by perturbing the input by 1e-10); with IR points the gap edges agree to all printed digits.
 - EPW's FBW free energy matches the FSR Bardeen–Stephen expression with the normal-state Z_N **without** the factor pi of the FSR Z_N. The test records this convention.

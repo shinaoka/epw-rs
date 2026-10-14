@@ -21,7 +21,7 @@
 //! All fits and evaluations are batched over the trailing axes of the input.
 //!
 //! Sampling points change between sparse-ir versions and implementations; to
-//! reproduce another code, pin them with [`SamplingPoints`].
+//! reproduce another code, pin them with [`IrSettings`].
 
 use crate::anisotropic::{check_shape, AnisotropicModel, StateFrequencySum};
 use crate::matsubara::{check_rows, FrequencySum, Parity};
@@ -37,7 +37,7 @@ use tenferro_tensor::{BackendSessionHost, TypedTensor};
 
 /// Sampling points; `None` uses the sparse-ir-rs defaults.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct SamplingPoints {
+pub struct IrSettings {
     /// Imaginary times as `tau / beta` in `[-1, 1]`.
     ///
     /// EPW's IR object files store `x` in `[-1, 1]` with `tau = beta (x + 1) / 2`,
@@ -50,6 +50,22 @@ pub struct SamplingPoints {
     /// Reproduce EPW 6.1: when the basis size is odd, its fermionic
     /// `evaluate_matsubara` omits the last coefficient. Off by default.
     pub epw_drop_last_coefficient: bool,
+    /// Reproduce EPW 6.1's `eps_cut_ir` in [`IrStateSum`]: IR coefficients with
+    /// `|c_l| / max_l |c_l| < cut` are set to zero in every kernel row `(s, q, s')`
+    /// and in the normal Green's-function row of every state. `None` (default) disables it.
+    pub epw_coefficient_cut: Option<f64>,
+}
+
+/// Zero the coefficients of each column (axis 0 = basis index) below `cut` times the column maximum.
+fn cut_coefficients(data: &mut [f64], size: usize, cut: f64) {
+    for column in data.chunks_exact_mut(size) {
+        let max = column.iter().fold(0.0_f64, |m, c| m.max(c.abs()));
+        for c in column.iter_mut() {
+            if c.abs() < cut * max {
+                *c = 0.0;
+            }
+        }
+    }
 }
 
 /// The singular-value expansion of the logistic kernel, computed once and
@@ -136,7 +152,7 @@ struct IrSampling {
 }
 
 impl IrSampling {
-    fn new(set: &IrBasisSet, temperature: f64, points: &SamplingPoints) -> Result<Self, Error> {
+    fn new(set: &IrBasisSet, temperature: f64, points: &IrSettings) -> Result<Self, Error> {
         let beta = 1.0 / temperature;
         let (fermionic, bosonic) = set.bases(beta)?;
         let matsubara = match &points.fermionic {
@@ -201,14 +217,26 @@ impl IrSampling {
 
     /// Real bosonic kernel values `(nboson, ...)` -> `lambda(tau) / T` on the τ points `(ntau, ...)`.
     fn kernel_tau(&self, values: &TypedTensor<f64>) -> Result<TypedTensor<f64>, Error> {
+        self.kernel_tau_from_coefficients(&self.kernel_coefficients(values)?)
+    }
+
+    /// Real bosonic kernel values `(nboson, ...)` -> IR coefficients `(size, ...)`.
+    fn kernel_coefficients(&self, values: &TypedTensor<f64>) -> Result<TypedTensor<f64>, Error> {
         let complex: Vec<Complex64> = values
             .as_slice()?
             .iter()
             .map(|&v| Complex64::new(v, 0.0))
             .collect();
         let complex = TypedTensor::from_vec_col_major(values.shape().to_vec(), complex)?;
-        let coeffs = self.boson_matsubara.fit_nd(None, &complex, 0)?;
-        let tau = self.boson_tau.evaluate_nd(None, &coeffs, 0)?;
+        Ok(self.boson_matsubara.fit_nd(None, &complex, 0)?)
+    }
+
+    /// Bosonic coefficients `(size, ...)` -> `lambda(tau) / T` on the τ points `(ntau, ...)`.
+    fn kernel_tau_from_coefficients(
+        &self,
+        coeffs: &TypedTensor<f64>,
+    ) -> Result<TypedTensor<f64>, Error> {
+        let tau = self.boson_tau.evaluate_nd(None, coeffs, 0)?;
         let scaled: Vec<f64> = tau
             .as_slice()?
             .iter()
@@ -218,6 +246,10 @@ impl IrSampling {
             tau.shape().to_vec(),
             scaled,
         )?)
+    }
+
+    fn size(&self) -> usize {
+        self.u_zero.len()
     }
 
     /// Fit odd/even real functions given at the positive fermionic points (axis 0).
@@ -313,14 +345,14 @@ impl IrSum {
     /// ```
     /// use eliashberg::*;
     /// let set = IrBasisSet::new(1e3, 1e-10)?;
-    /// let sum = IrSum::new(&set, 0.01, &SamplingPoints::default(), |nu| Ok(vec![0.0; nu.len()]))?;
+    /// let sum = IrSum::new(&set, 0.01, &IrSettings::default(), |nu| Ok(vec![0.0; nu.len()]))?;
     /// assert!(sum.indices().iter().all(|&n| n >= 0));
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
     pub fn new(
         set: &IrBasisSet,
         temperature: f64,
-        points: &SamplingPoints,
+        points: &IrSettings,
         kernel: impl FnOnce(&[f64]) -> Result<Vec<f64>, Error>,
     ) -> Result<Self, Error> {
         let sampling = IrSampling::new(set, temperature, points)?;
@@ -340,7 +372,7 @@ impl IrSum {
     /// ```
     /// use eliashberg::*;
     /// let set = IrBasisSet::new(1e2, 1e-8)?;
-    /// let sum = IrSum::new(&set, 0.1, &SamplingPoints::default(), |nu| Ok(vec![0.0; nu.len()]))?;
+    /// let sum = IrSum::new(&set, 0.1, &IrSettings::default(), |nu| Ok(vec![0.0; nu.len()]))?;
     /// assert!(sum.tau_points().iter().any(|&t| t < 0.0)); // sparse-ir-rs: [-beta/2, beta/2]
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
@@ -389,6 +421,7 @@ pub struct IrStateSum {
     /// `L_{ss'}(tau) / T`, shape `(ntau, nstates, nstates)`.
     kernel_tau: TypedTensor<f64>,
     backend: CpuBackend,
+    cut: Option<f64>,
 }
 
 impl std::fmt::Debug for IrStateSum {
@@ -413,9 +446,9 @@ impl IrStateSum {
     /// ```
     /// use eliashberg::*;
     /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
-    ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, omega: 0.05, weight: 0.025 }] };
+    ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.05, weight: 0.025 }] };
     /// let set = IrBasisSet::new(1e3, 1e-10)?;
-    /// let sum = IrStateSum::new(tenferro_cpu::CpuBackend::new(), &set, &m, 0.002, &SamplingPoints::default())?;
+    /// let sum = IrStateSum::new(tenferro_cpu::CpuBackend::new(), &set, &m, 0.002, &IrSettings::default())?;
     /// assert!(!sum.indices().is_empty());
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
@@ -424,22 +457,88 @@ impl IrStateSum {
         set: &IrBasisSet,
         model: &AnisotropicModel,
         temperature: f64,
-        points: &SamplingPoints,
+        points: &IrSettings,
     ) -> Result<Self, Error> {
         let sampling = IrSampling::new(set, temperature, points)?;
         let nu = sampling.boson_frequencies();
         let ns = model.nstates();
-        // L[s, s', l] -> (l, s, s') for the fit along the bosonic axis.
-        let kernel = model.kernel_matsubara(&nu)?;
         let mut backend = backend;
-        let kernel = backend.with_backend_session(|s| [&kernel].einsum("sql->lsq", s))?;
-        let kernel_tau = sampling.kernel_tau(&kernel)?;
+        let kernel_tau = match points.epw_coefficient_cut {
+            None => {
+                // L[s, s', l] -> (l, s, s') for the fit along the bosonic axis.
+                let kernel = model.kernel_matsubara(&nu)?;
+                let kernel = backend.with_backend_session(|s| [&kernel].einsum("sql->lsq", s))?;
+                sampling.kernel_tau(&kernel)?
+            }
+            Some(cut) => cut_kernel_tau(&sampling, model, &nu, cut)?,
+        };
         debug_assert_eq!(kernel_tau.shape()[1..], [ns, ns]);
         Ok(Self {
             sampling,
             kernel_tau,
             backend,
+            cut: points.epw_coefficient_cut,
         })
+    }
+}
+
+/// Kernel in τ with EPW's per-row cut: rows `(s, q, s')` are fitted and cut separately,
+/// then summed into `L_{ss'}(tau) / T`.
+fn cut_kernel_tau(
+    sampling: &IrSampling,
+    model: &AnisotropicModel,
+    nu: &[f64],
+    cut: f64,
+) -> Result<TypedTensor<f64>, Error> {
+    let ns = model.nstates();
+    let mut keys: Vec<(usize, usize, usize)> = model
+        .kernel_entries
+        .iter()
+        .map(|e| (e.s, e.s_prime, e.q))
+        .collect();
+    keys.sort_unstable();
+    keys.dedup();
+    let row_of =
+        |key: &(usize, usize, usize)| keys.binary_search(key).expect("key collected above");
+    let (nb, nrows) = (nu.len(), keys.len());
+    let mut values = vec![0.0; nb * nrows];
+    for e in &model.kernel_entries {
+        let row = row_of(&(e.s, e.s_prime, e.q));
+        for (l, v) in nu.iter().enumerate() {
+            values[l + nb * row] += e.weight * 2.0 * e.omega / (e.omega * e.omega + v * v);
+        }
+    }
+    let values = TypedTensor::from_vec_col_major(vec![nb, nrows], values)?;
+    let coeffs = sampling.kernel_coefficients(&values)?;
+    let mut data = coeffs.as_slice()?.to_vec();
+    cut_coefficients(&mut data, sampling.size(), cut);
+    let coeffs = TypedTensor::from_vec_col_major(coeffs.shape().to_vec(), data)?;
+    let rows_tau = sampling.kernel_tau_from_coefficients(&coeffs)?;
+    let rows_tau = rows_tau.as_slice()?;
+    let ntau = rows_tau.len() / nrows;
+    let mut out = vec![0.0; ntau * ns * ns];
+    for (row, &(s, sp, _)) in keys.iter().enumerate() {
+        let target = ntau * (s + ns * sp);
+        for (o, v) in out[target..target + ntau]
+            .iter_mut()
+            .zip(&rows_tau[row * ntau..(row + 1) * ntau])
+        {
+            *o += v;
+        }
+    }
+    Ok(TypedTensor::from_vec_col_major(vec![ntau, ns, ns], out)?)
+}
+
+impl IrStateSum {
+    fn convolve_tau(
+        &mut self,
+        f_tau: &TypedTensor<f64>,
+        parity: Parity,
+    ) -> Result<TypedTensor<f64>, Error> {
+        let c_tau = self
+            .backend
+            .with_backend_session(|s| [&self.kernel_tau, f_tau].einsum("tsq,tq->ts", s))?;
+        self.sampling.back_from_tau(&c_tau, parity)
     }
 }
 
@@ -460,15 +559,79 @@ impl StateFrequencySum for IrStateSum {
         let ns = self.kernel_tau.shape()[1];
         check_shape(f, self.sampling.indices.len(), ns)?;
         let f_tau = self.sampling.to_tau(f, parity)?;
-        let c_tau = self
-            .backend
-            .with_backend_session(|s| [&self.kernel_tau, &f_tau].einsum("tsq,tq->ts", s))?;
-        self.sampling.back_from_tau(&c_tau, parity)
+        self.convolve_tau(&f_tau, parity)
     }
 
     fn sum_even(&mut self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error> {
         let ns = self.kernel_tau.shape()[1];
         check_shape(f, self.sampling.indices.len(), ns)?;
         self.sampling.sum_even(f)
+    }
+
+    fn sum_even_rows(&mut self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error> {
+        check_rows(f, self.sampling.indices.len())?;
+        let coeffs = self.sampling.coefficients(f, Parity::Even)?;
+        let mut data = coeffs.as_slice()?.to_vec();
+        if let Some(cut) = self.cut {
+            // EPW cuts the anomalous rows of the Coulomb term (but not those of mu*).
+            cut_coefficients(&mut data, self.sampling.size(), cut);
+        }
+        Ok(data
+            .chunks_exact(self.sampling.size())
+            .map(|row| {
+                row.iter()
+                    .zip(&self.sampling.u_zero)
+                    .map(|(c, u)| c * u)
+                    .sum()
+            })
+            .collect())
+    }
+
+    fn convolve_normal(
+        &mut self,
+        z: &TypedTensor<f64>,
+        xi: &TypedTensor<f64>,
+    ) -> Result<(TypedTensor<f64>, TypedTensor<f64>), Error> {
+        let Some(cut) = self.cut else {
+            return Ok((
+                self.convolve(z, Parity::Odd)?,
+                self.convolve(xi, Parity::Even)?,
+            ));
+        };
+        let ns = self.kernel_tau.shape()[1];
+        check_shape(z, self.sampling.indices.len(), ns)?;
+        check_shape(xi, self.sampling.indices.len(), ns)?;
+        // EPW cuts the coefficients of the complex row -(i omega Z + xi) / Theta as one row;
+        // its coefficients are -(c_z + c_xi).
+        let cz = self.sampling.coefficients(z, Parity::Odd)?;
+        let cx = self.sampling.coefficients(xi, Parity::Even)?;
+        let size = self.sampling.size();
+        let (mut dz, mut dx) = (cz.as_slice()?.to_vec(), cx.as_slice()?.to_vec());
+        for (col_z, col_x) in dz.chunks_exact_mut(size).zip(dx.chunks_exact_mut(size)) {
+            let max = col_z
+                .iter()
+                .zip(col_x.iter())
+                .fold(0.0_f64, |m, (a, b)| m.max((a + b).abs()));
+            for (a, b) in col_z.iter_mut().zip(col_x.iter_mut()) {
+                if (*a + *b).abs() < cut * max {
+                    *a = 0.0;
+                    *b = 0.0;
+                }
+            }
+        }
+        let shape = cz.shape().to_vec();
+        let tz = self.sampling.tau.evaluate_nd(
+            None,
+            &TypedTensor::from_vec_col_major(shape.clone(), dz)?,
+            0,
+        )?;
+        let tx =
+            self.sampling
+                .tau
+                .evaluate_nd(None, &TypedTensor::from_vec_col_major(shape, dx)?, 0)?;
+        Ok((
+            self.convolve_tau(&tz, Parity::Odd)?,
+            self.convolve_tau(&tx, Parity::Even)?,
+        ))
     }
 }

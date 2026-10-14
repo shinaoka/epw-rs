@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let start = std::time::Instant::now();
     let set = IrBasisSet::new(1e5, 1e-10)?;
-    let mut ir = IrSum::new(&set, t, &SamplingPoints::default(), kernel)?;
+    let mut ir = IrSum::new(&set, t, &IrSettings::default(), kernel)?;
     let sol_ir = solve_isotropic_fbw(&mut tenferro_cpu::CpuBackend::new(), &mut ir, &dos, &params)?;
     println!(
         "IR (Lambda 1e5, eps 1e-10): {} frequencies, {} iterations, {:.2} s",

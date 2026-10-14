@@ -39,7 +39,7 @@ fn ir_solution_is_basis_independent_and_approached_by_uniform_grids() {
     let mut gaps = Vec::new();
     for lambda in [1e5, 1e6] {
         let set = IrBasisSet::new(lambda, 1e-6).unwrap();
-        let mut sum = IrSum::new(&set, t, &SamplingPoints::default(), kernel).unwrap();
+        let mut sum = IrSum::new(&set, t, &IrSettings::default(), kernel).unwrap();
         let sol = solve_isotropic_fbw(
             &mut tenferro_cpu::CpuBackend::new(),
             &mut sum,

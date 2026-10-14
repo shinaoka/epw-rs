@@ -27,14 +27,14 @@ fn basis_set() -> &'static IrBasisSet {
     SET.get_or_init(|| IrBasisSet::new(1e3, 1e-10).unwrap())
 }
 
-fn ir_sum(points: &SamplingPoints) -> IrSum {
+fn ir_sum(points: &IrSettings) -> IrSum {
     IrSum::new(basis_set(), T, points, einstein).unwrap()
 }
 
 /// sum_{m in Z} 1 / (omega_m^2 + a^2) = tanh(a / 2T) / (2 a T).
 #[test]
 fn even_sum_is_exact() {
-    let mut sum = ir_sum(&SamplingPoints::default());
+    let mut sum = ir_sum(&IrSettings::default());
     let a = 0.03;
     let omega: Vec<f64> = sum
         .indices()
@@ -54,7 +54,7 @@ fn even_sum_is_exact() {
 /// Convolutions agree with a dense uniform sum (truncated where f is negligible).
 #[test]
 fn convolution_matches_dense_sum() {
-    let mut ir = ir_sum(&SamplingPoints::default());
+    let mut ir = ir_sum(&IrSettings::default());
     let n_dense = 200_000;
     let a = 0.03;
     let even = |w: f64| a / (w * w + a * a);
@@ -99,7 +99,7 @@ fn convolution_matches_dense_sum() {
 /// tau points in [-beta/2, beta/2] (sparse-ir-rs) and in (0, beta) give the same convolution.
 #[test]
 fn tau_range_does_not_matter() {
-    let mut shifted = ir_sum(&SamplingPoints::default());
+    let mut shifted = ir_sum(&IrSettings::default());
     let unfolded: Vec<f64> = shifted
         .tau_points()
         .iter()
@@ -111,7 +111,7 @@ fn tau_range_does_not_matter() {
             }
         })
         .collect();
-    let mut positive = ir_sum(&SamplingPoints {
+    let mut positive = ir_sum(&IrSettings {
         tau: Some(unfolded),
         ..Default::default()
     });

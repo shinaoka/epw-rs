@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let set = IrBasisSet::new(lambda, eps)?;
         let t_sve = t0.elapsed().as_secs_f64();
         let t1 = std::time::Instant::now();
-        let mut sum = IrSum::new(&set, 0.0013, &SamplingPoints::default(), |nu| {
+        let mut sum = IrSum::new(&set, 0.0013, &IrSettings::default(), |nu| {
             Ok(nu.iter().map(|v| 1.0 / (1.0 + v * v)).collect())
         })?;
         let t_basis = t1.elapsed().as_secs_f64();

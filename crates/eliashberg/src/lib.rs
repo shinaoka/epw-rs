@@ -22,24 +22,26 @@
 mod anisotropic;
 mod isotropic;
 mod matsubara;
+mod pade;
 mod spectrum;
 
 #[cfg(feature = "sparse-ir")]
 mod ir;
 
 pub use anisotropic::{
-    solve_anisotropic_fbw, AnisotropicModel, AnisotropicParams, AnisotropicSolution, KernelEntry,
-    StateFrequencySum, UniformStateSum,
+    solve_anisotropic_fbw, solve_anisotropic_fbw_coulomb, AnisotropicModel, AnisotropicParams,
+    AnisotropicSolution, CoulombStates, KernelEntry, StateFrequencySum, UniformStateSum,
 };
 pub use isotropic::{
     free_energy_difference, normal_state_z, solve_isotropic_fbw, solve_isotropic_fsr, ElectronDos,
     IsotropicParams, IsotropicSolution,
 };
 pub use matsubara::{fermionic_frequency, frequencies_below, FrequencySum, Parity, UniformSum};
+pub use pade::{continue_to_real_axis, gap_edge, pade_point_count, Pade, RealAxisSolution};
 pub use spectrum::EliashbergSpectrum;
 
 #[cfg(feature = "sparse-ir")]
-pub use ir::{IrBasisSet, IrStateSum, IrSum, SamplingPoints};
+pub use ir::{IrBasisSet, IrSettings, IrStateSum, IrSum};
 
 /// Errors of the Eliashberg solvers.
 #[derive(Debug, thiserror::Error)]

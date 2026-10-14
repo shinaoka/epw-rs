@@ -261,3 +261,129 @@ pub fn read_ir_object(path: &Path) -> Result<IrObjectPoints, Error> {
         bosonic,
     })
 }
+
+/// Bands and symmetry written by `nscf2supercond.x` for EPW's Coulomb term (`filnscf_coul`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CoulombBands {
+    /// Lattice vectors `a_i` in units of alat (as rows).
+    pub at: [[f64; 3]; 3],
+    /// Symmetry rotations in crystal coordinates, `s[n][i][j]`, for the `nsym` operations.
+    pub rotations: Vec<[[i64; 3]; 3]>,
+    /// Time-reversal flag of each operation.
+    pub time_reversal: Vec<bool>,
+    /// k mesh.
+    pub k_mesh: [usize; 3],
+    /// Irreducible k points in crystal coordinates.
+    pub k_points: Vec<[f64; 3]>,
+    /// Band energies `(nbnd, nk)` in eV.
+    pub energies: Vec<f64>,
+    /// Bands per k.
+    pub nbnd: usize,
+}
+
+/// Read the band file of `nscf2supercond.x`.
+///
+/// # Errors
+///
+/// [`Error::Io`] if unreadable, [`Error::Parse`] or [`Error::UnexpectedEnd`] for a
+/// malformed file, [`Error::Unsupported`] for a shifted k mesh.
+///
+/// # Examples
+///
+/// ```
+/// let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+///     .join("../../tests/fixtures/mgb2_epw_super/aniso");
+/// let bands = eph_io_epw::supercond::read_coulomb_bands(&dir.join("MgB2.bands.6x6x6.dat"))?;
+/// assert_eq!((bands.nbnd, bands.k_points.len(), bands.rotations.len()), (8, 28, 24));
+/// # Ok::<(), eph_io_epw::Error>(())
+/// ```
+pub fn read_coulomb_bands(path: &Path) -> Result<CoulombBands, Error> {
+    let text = read_text(path)?;
+    let mut tokens = text.split_whitespace();
+    let mut next = |what: &'static str| -> Result<&str, Error> {
+        tokens.next().ok_or_else(|| Error::UnexpectedEnd {
+            path: path.to_path_buf(),
+            what,
+        })
+    };
+    fn num<T: std::str::FromStr>(path: &Path, t: &str, what: &'static str) -> Result<T, Error> {
+        t.replace(['D', 'd'], "E")
+            .parse()
+            .map_err(|_| parse_error(path, t, what))
+    }
+    let _alat: f64 = num(path, next("alat")?, "alat")?;
+    let mut at = [[0.0; 3]; 3];
+    for row in at.iter_mut() {
+        for v in row.iter_mut() {
+            *v = num(path, next("at")?, "at")?;
+        }
+    }
+    let _nrot: usize = num(path, next("nrot")?, "nrot")?;
+    let nsym: usize = num(path, next("nsym")?, "nsym")?;
+    let _trev_flag = next("time_reversal")?;
+    let t_rev: Vec<i64> = (0..48)
+        .map(|_| num(path, next("t_rev")?, "t_rev"))
+        .collect::<Result<_, _>>()?;
+    let mut all_rotations = Vec::with_capacity(48);
+    for _ in 0..48 {
+        // Written as ((s(i,j), i=1,3), j=1,3).
+        let mut s = [[0i64; 3]; 3];
+        for j in 0..3 {
+            for row in s.iter_mut() {
+                row[j] = num(path, next("rotation")?, "rotation")?;
+            }
+        }
+        all_rotations.push(s);
+    }
+    let _lsda = next("lsda")?;
+    let _nspin = next("nspin")?;
+    let _noinv = next("noinv")?;
+    let _noncolin = next("noncolin")?;
+    let _lspinorb = next("lspinorb")?;
+    let k_mesh: [usize; 3] = [
+        num(path, next("nk1")?, "nk1")?,
+        num(path, next("nk2")?, "nk2")?,
+        num(path, next("nk3")?, "nk3")?,
+    ];
+    let shift: [i64; 3] = [
+        num(path, next("k1")?, "k1")?,
+        num(path, next("k2")?, "k2")?,
+        num(path, next("k3")?, "k3")?,
+    ];
+    if shift != [0, 0, 0] {
+        return Err(Error::Unsupported {
+            path: path.to_path_buf(),
+            detail: "shifted k meshes are not supported (EPW requires 0 0 0)".into(),
+        });
+    }
+    let nbnd: usize = num(path, next("nbnd")?, "nbnd")?;
+    let nk: usize = num(path, next("nkstot")?, "nkstot")?;
+    let mut k_points = Vec::with_capacity(nk);
+    let mut energies = Vec::with_capacity(nk * nbnd);
+    for _ in 0..nk {
+        let _ik = next("k index")?;
+        let _wk = next("k weight")?;
+        let cart: [f64; 3] = [
+            num(path, next("xk")?, "xk")?,
+            num(path, next("xk")?, "xk")?,
+            num(path, next("xk")?, "xk")?,
+        ];
+        // Crystal coordinates: x_i = a_i . k (k in 2 pi / alat, a_i in alat).
+        k_points.push(std::array::from_fn(|i| {
+            (0..3).map(|j| at[i][j] * cart[j]).sum()
+        }));
+        for _ in 0..nbnd {
+            let e: f64 = num(path, next("energy")?, "energy")?;
+            energies.push(e * phys_units::RY_TO_EV);
+        }
+    }
+    Ok(CoulombBands {
+        at,
+        rotations: all_rotations.into_iter().take(nsym).collect(),
+        time_reversal: t_rev.into_iter().take(nsym).map(|t| t == 1).collect(),
+        k_mesh,
+        k_points,
+        energies,
+        nbnd,
+    })
+}
