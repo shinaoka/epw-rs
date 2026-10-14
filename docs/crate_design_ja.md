@@ -196,7 +196,7 @@ L0 と L1 が AI 開発のファーストフィードバックになります．
 
 ## 6. 未確認の点
 
-- `epmatwp` のバイト配置（MPI-IO で書かれた direct-access 形式）．
-- EPW の Fermi 準位の再計算規則（細かい格子で再決定する条件）．
+- ~~`epmatwp` のバイト配置~~：確認済み．記録マーカーのない complex128 の column-major 配列 `(nbnd, nbnd, nrr_k, nmodes, nrr_g)` で，Rₚ が最外です（[pb_reproduction_ja.md](pb_reproduction_ja.md)）．
+- ~~EPW の Fermi 準位の再計算規則~~：確認済み．`efermi_read` でなければ細かい k 格子で常に再決定します．QE の `efermig`（Gauss で二分法 → Methfessel-Paxton で Newton 法 → 失敗したら二分法）を使います．
 - 対称性の扱いを境界データに含めるか，結晶構造から再計算するか．
 - 行数は QE develop ブランチの 2026-10 時点の集計です．

@@ -14,6 +14,7 @@ QE の `test-suite/epw_*` は，すでに「上流で 1 回書き出し，下流
   - `wigner.fmt`：Wigner-Seitz ベクトルと重複度（電子，フォノン，g の 3 組）．
   - `<prefix>.epmatwp`：Wannier 表現の g(Rₑ,Rₚ)．Fortran の direct-access バイナリ（MPI-IO で書き出し）．
   - 必要に応じて `vmedata.fmt`（速度行列要素），`dmedata.fmt`．
+  - EPW 自身が `epwread` で読み直すには `<prefix>.ukk`（Wannier の U 行列）も要ります（2026-10-15 に確認）．Rust 側の下流は使いません．
 
 Fortran の EPW を 1 回だけ流してこれらを fixture として固めれば，Rust の下流は pw.x も ph.x も QE も無しで，何度でも数秒でテストできます．EPW-VASP の `elphon_wannier.h5` も，ほぼ同じ情報を HDF5 にしたものです．
 

@@ -1,0 +1,22 @@
+[package]
+name = "wannier-interp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+num-complex.workspace = true
+thiserror.workspace = true
+tenferro-tensor.workspace = true
+tenferro-runtime.workspace = true
+tenferro-cpu.workspace = true
+tenferro-einsum.workspace = true
+tenferro-linalg.workspace = true
+tenferro-fft.workspace = true
+bz-mesh.workspace = true
+eph-wannier-data.workspace = true
+phys-units.workspace = true
+
+[dev-dependencies]
+eph-io-epw.workspace = true

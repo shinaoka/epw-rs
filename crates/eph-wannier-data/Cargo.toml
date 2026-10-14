@@ -1,0 +1,10 @@
+[package]
+name = "eph-wannier-data"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+num-complex.workspace = true
+thiserror.workspace = true

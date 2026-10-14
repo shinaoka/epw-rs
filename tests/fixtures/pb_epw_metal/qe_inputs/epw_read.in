@@ -1,0 +1,55 @@
+--
+&inputepw
+  prefix      = 'pb'
+  amass(1)    = 207.2
+  outdir      = './'
+
+  elph        = .true.
+  epbwrite    = .false.
+  epbread     = .false.
+  epwwrite    = .false.
+  epwread     = .true.
+  vme         = 'dipole'
+
+  nbndsub     =  4
+  bands_skipped = 'exclude_bands = 1-5'
+
+  wannierize  = .false.
+  num_iter    = 300
+  dis_win_max = 21
+  dis_win_min = -3
+  dis_froz_min= -3
+  dis_froz_max= 13.5
+  proj(1)     = 'Pb:sp3'
+
+
+  iverbosity  = 0
+
+  elecselfen  = .true.
+  phonselfen  = .true.
+  a2f         = .true.
+
+  fsthick     = 6 ! eV
+  temps       = 300 ! K
+  degaussw    = 0.1  ! eV
+  degaussq    = 0.05 ! meV
+  assume_metal = .TRUE.
+
+  dvscf_dir   = './save'
+
+  nkf1        = 6
+  nkf2        = 6
+  nkf3        = 6
+
+  nqf1        = 6
+  nqf2        = 6
+  nqf3        = 6
+
+  nk1         = 3
+  nk2         = 3
+  nk3         = 3
+
+  nq1         = 3
+  nq2         = 3
+  nq3         = 3
+ /
