@@ -28,7 +28,7 @@
 | 層 | 主なファイル | QE への依存 |
 |---|---|---|
 | **上流**：粗い格子での g の計算，Wannier 化 | `ep_coarse`（832 行），`ep_coarse_unfolding`（1368），`pw2wan`（4093），`dvqhub`（1802），`dvqpsi`（1205），`init`（267），`setups`（183）．計約 9,750 行 | 深い．`wvfct`，`gvect`，`fft_*`，`uspp*`，`becmod`，DFPT の内部状態（`phcom`，`lrus`，`eqv`，`qpoint`），DFT+U（`ldau*`），`paw_variables`，wannier90 ライブラリを直接使う |
-| **下流**：Wannier 補間と物性計算 | `wannier2bloch`，`selfen`，`spectral`，`transport`，`polaron*`，`supercond_*`，`tdbe` など | 浅い．使うのは MPI ラッパー（`mp`，`mp_global`），`io_global`，`cell_base`，`ions_base`，物理定数程度．例えば `selfen` が QE から取るのは `klist` の `degauss` と `ngauss` だけ |
+| **下流**：Wannier 補間と物性計算 | `wannier2bloch`，`selfen`，`spectral`，`transport`，`polaron*`，`supercond_*`，`tdbe` など | 浅い．使うのは MPI ラッパー（`mp`，`mp_global`），`io_global`，`cell_base`，`ions_base`，物理定数程度．加えて対称操作（`symm_base`），四面体法（`ktetra`），`ef` と `nelec`（`pwcom`）．例えば `selfen` が QE から取るのは `klist` の `degauss` と `ngauss` だけ．詳細は [crate_design_ja.md](crate_design_ja.md) |
 
 **自然な境界は「Wannier 表現の g(Rₑ,Rₚ)，H(R)，力定数，格子と原子の情報」**です．上流は QE の中に残し，下流は独立した crate 群にできます．下流が実際にやっているのは，Fourier 補間，対角化，BZ 上の和，Eliashberg 方程式や Boltzmann 方程式の反復です．
 
