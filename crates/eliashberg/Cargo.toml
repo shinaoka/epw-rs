@@ -1,0 +1,31 @@
+[package]
+name = "eliashberg"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Matsubara sums with the intermediate-representation basis (sparse-ir-rs).
+sparse-ir = ["dep:sparse-ir"]
+
+[dependencies]
+thiserror.workspace = true
+num-complex.workspace = true
+tenferro-tensor.workspace = true
+tenferro-cpu.workspace = true
+tenferro-einsum.workspace = true
+sparse-ir = { workspace = true, optional = true }
+
+[dev-dependencies]
+eph-io-epw.workspace = true
+phys-units.workspace = true
+
+[[example]]
+name = "mgb2_ir_vs_uniform"
+required-features = ["sparse-ir"]
+
+[[example]]
+name = "ir_timing"
+required-features = ["sparse-ir"]

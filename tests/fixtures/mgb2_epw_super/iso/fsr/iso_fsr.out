@@ -1,0 +1,238 @@
+Authorization required, but no authorization protocol specified
+
+Authorization required, but no authorization protocol specified
+
+Authorization required, but no authorization protocol specified
+
+                                                                                      
+                                       ``:oss/                                        
+                           `.+s+.     .+ys--yh+     `./ss+.                           
+                          -sh//yy+`   +yy   +yy    -+h+-oyy                           
+                          -yh- .oyy/.-sh.   .syo-.:sy-  /yh                           
+                 `.-.`    `yh+   -oyyyo.     `/syys:    oys      `.`                  
+               `/+ssys+-` `sh+      `                   oys`   .:osyo`                
+               -yh- ./syyooyo`                          .sys+/oyo--yh/                
+               `yy+    .-:-.                             `-/+/:`  -sh-                
+                /yh.                                              oys                 
+          ``..---hho---------`   .---------..`      `.-----.`    -hd+---.             
+       `./osmNMMMMMMMMMMMMMMMs. +NNMMMMMMMMNNmh+.   yNMMMMMNm-  oNMMMMMNmo++:`        
+       +sy--/sdMMMhyyyyyyyNMMh- .oyNMMmyyyyyhNMMm+` -yMMMdyyo:` .oyyNMMNhs+syy`       
+       -yy/   /MMM+.`-+/``mMMy-   `mMMh:`````.dMMN:` `MMMy-`-dhhy```mMMy:``+hs        
+        -yy+` /MMMo:-mMM+`-oo/.    mMMh:     `dMMN/`  dMMm:`dMMMMy..MMMo-.+yo`        
+         .sys`/MMMMNNMMMs-         mMMmyooooymMMNo:   oMMM/sMMMMMM++MMN//oh:          
+          `sh+/MMMhyyMMMs- `-`     mMMMMMMMMMNmy+-`   -MMMhMMMsmMMmdMMd/yy+           
+    `-/+++oyy-/MMM+.`/hh/.`mNm:`   mMMd+/////:-.`      NMMMMMd/:NMMMMMy:/yyo/:.`      
+   +os+//:-..-oMMMo:--:::-/MMMo. .-mMMd+---`           hMMMMN+. oMMMMMo. `-+osyso:`   
+   syo     `mNMMMMMNNNNNNNNMMMo.oNNMMMMMNNNN:`         +MMMMs:`  dMMMN/`     ``:syo   
+   /yh`     :syyyyyyyyyyyyyyyy+.`+syyyyyyyyo:`         .oyys:`   .oyys:`        +yh   
+   -yh-        ````````````````    `````````              ``        ``          oys   
+   -+h/------------------------::::::::://////++++++++++++++++++++++///////::::/yd:   
+   shdddddddddddddddddddddddddddddhhhhhhhhyyyyyssssssssssssssssyyyyyyyhhhhhhhddddh`   
+                                                                                      
+ Lee, H., Poncé, S., Bushick, K., Hajinazar, S., Lafuente-Bartolome, J.,Leveillee, J.,
+    Lian, C., Lihm, J., Macheda, F., Mori, H., Paudyal, H., Sio, W., Tiwari, S.,      
+ Zacharias, M., Zhang, X., Bonini, N., Kioupakis, E., Margine, E.R., and Giustino F., 
+                                                     npj Comput Mater 9, 156 (2023)   
+                                                                                      
+
+     Program EPW v.6.1 starts on 15Oct2026 at  6: 6:44 
+        Git branch: HEAD
+        Last git commit: 9f93ddec427d2b9a45bb72d828c6d324f62fcabd
+        Last git commit date: Thu Jul 9 09:42:23 2026 +0200
+        Last git commit subject: setting version number to 7.6
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
+         "P. Giannozzi et al., J. Chem. Phys. 152 154105 (2020);
+          URL http://www.quantum-espresso.org", 
+     in publications or presentations arising from this work. More details at
+     http://www.quantum-espresso.org/quote
+
+     Parallel version (MPI), running on     1 processors
+
+     MPI processes distributed on     1 nodes
+     157465 MiB available memory on the printing compute node when the environment starts
+
+     Reading input from iso_fsr.in
+      Title line not specified: using 'default'.
+
+     Reading supplied temperature list.
+                      
+     ------------------------------------------------------------------------ 
+                   RESTART - RESTART - RESTART - RESTART                         
+     Restart is done without reading PWSCF save file.                  
+     Be aware that some consistency checks are therefore not done.                  
+     ------------------------------------------------------------------------ 
+                      
+
+     default                                                                    
+
+     bravais-lattice index     =            0
+     lattice parameter (a_0)   =       0.0000  a.u.
+     unit-cell volume          =       0.0000 (a.u.)^3
+     number of atoms/cell      =            0
+     number of atomic types    =            0
+     kinetic-energy cut-off    =       0.0000  Ry
+     charge density cut-off    =       0.0000  Ry
+     Exchange-correlation= not set
+                           (  -1  -1  -1  -1  -1  -1  -1)
+
+
+     celldm(1)=    0.00000  celldm(2)=    0.00000  celldm(3)=    0.00000
+     celldm(4)=    0.00000  celldm(5)=    0.00000  celldm(6)=    0.00000
+
+     crystal axes: (cart. coord. in units of a_0)
+               a(1) = (  0.0000  0.0000  0.0000 )  
+               a(2) = (  0.0000  0.0000  0.0000 )  
+               a(3) = (  0.0000  0.0000  0.0000 )  
+
+     reciprocal axes: (cart. coord. in units 2 pi/a_0)
+               b(1) = (  0.0000  0.0000  0.0000 )  
+               b(2) = (  0.0000  0.0000  0.0000 )  
+               b(3) = (  0.0000  0.0000  0.0000 )  
+
+
+     Atoms inside the unit cell: 
+
+   Cartesian axes
+
+     site n.  atom      mass           positions (a_0 units)
+
+
+     No symmetry!
+
+     G cutoff =    0.0000  (      0 G-vectors)     FFT grid: (  0,  0,  0)
+     number of k points=    0
+                       cart. coord. in units 2pi/a_0
+
+     ===================================================================
+     Solve isotropic Eliashberg equations
+     ===================================================================
+
+
+     Finish reading a2f file
+
+     Electron-phonon coupling strength =    0.8714773
+ 
+     Estimated Tc using McMillan expression =  26.4143 K for muc =   0.1600
+  
+     Estimated Tc using Allen-Dynes modified McMillan expression =  27.4631 K
+  
+     Estimated Tc using SISSO machine learning model =  31.5138 K
+  
+     Estimated w_log =  61.4876 meV
+  
+     Estimated BCS superconducting gap using McMillan Tc =   4.0061 meV
+  
+     Actual number of frequency points (     1) =     62 for uniform       sampling
+    
+     temp(  1) =     15.00000 K
+    
+     Solve isotropic Eliashberg equations on imaginary-axis
+    
+     Total number of frequency points nsiw(     1) =     62
+     Cutoff frequency wscut =     0.5000 eV
+     Maximum frequency =         0.4995 eV
+     broyden mixing factor =      0.70000
+    
+        startiw = 1, lastiw = 62, nsiw(itemp) = 62
+        iter      ethr          znormi      deltai [meV]
+          1   2.532238E+00   1.842463E+00   4.450462E+00
+          2   7.634686E-02   1.841916E+00   4.683631E+00
+          3   4.521361E-02   1.840696E+00   4.929561E+00
+          4   3.433182E-02   1.839549E+00   5.114726E+00
+          5   7.512253E-02   1.837095E+00   5.504771E+00
+          6   1.978506E-03   1.837063E+00   5.511305E+00
+          7   2.389461E-03   1.836985E+00   5.523396E+00
+          8   3.731226E-04   1.836997E+00   5.521436E+00
+          9   1.111959E-04   1.836994E+00   5.522010E+00
+         10   1.339787E-05   1.836994E+00   5.521941E+00
+         11   1.156052E-07   1.836994E+00   5.521940E+00
+         12   5.601247E-08   1.836994E+00   5.521940E+00
+         13   7.824472E-10   1.836994E+00   5.521940E+00
+         14   2.118287E-12   1.836994E+00   5.521940E+00
+         15   1.484691E-13   1.836994E+00   5.521940E+00
+     Convergence was reached in nsiter =     15
+ 
+     Temp (itemp =   1) =   15.000 K  Free energy =    -0.018341 meV
+ 
+     iaxis_imag   :      0.00s CPU      0.00s WALL (       1 calls)
+ 
+     itemp =   1   total cpu time :     0.0 secs
+ 
+     Actual number of frequency points (     2) =     46 for uniform       sampling
+    
+     temp(  2) =     20.00000 K
+    
+     Solve isotropic Eliashberg equations on imaginary-axis
+    
+     Total number of frequency points nsiw(     2) =     46
+     Cutoff frequency wscut =     0.5000 eV
+     Maximum frequency =         0.4927 eV
+     broyden mixing factor =      0.70000
+    
+        startiw = 1, lastiw = 46, nsiw(itemp) = 46
+        iter      ethr          znormi      deltai [meV]
+          1   2.714444E+00   1.834588E+00   5.494859E+00
+          2   9.765329E-02   1.836032E+00   5.483225E+00
+          3   6.100223E-02   1.836658E+00   5.438332E+00
+          4   2.084425E-02   1.836981E+00   5.376127E+00
+          5   1.416962E-02   1.837414E+00   5.307981E+00
+          6   1.436720E-02   1.837874E+00   5.236308E+00
+          7   2.383901E-03   1.837952E+00   5.224179E+00
+          8   2.241587E-04   1.837960E+00   5.223011E+00
+          9   9.184645E-06   1.837960E+00   5.223056E+00
+         10   4.086580E-06   1.837960E+00   5.223035E+00
+         11   1.566532E-07   1.837960E+00   5.223035E+00
+         12   3.474151E-08   1.837960E+00   5.223035E+00
+         13   2.011751E-09   1.837960E+00   5.223035E+00
+         14   4.140280E-12   1.837960E+00   5.223035E+00
+         15   4.248192E-13   1.837960E+00   5.223035E+00
+     Convergence was reached in nsiter =     15
+ 
+     Temp (itemp =   2) =   20.000 K  Free energy =    -0.012121 meV
+ 
+     iaxis_imag   :      0.00s CPU      0.00s WALL (       2 calls)
+ 
+     itemp =   2   total cpu time :     0.0 secs
+ 
+
+     Unfolding on the coarse grid
+
+     INITIALIZATION: 
+
+
+
+
+     Electron-Phonon interpolation
+
+
+     ELIASHBERG   :      0.00s CPU      0.00s WALL (       1 calls)
+
+
+     Total program execution
+     EPW          :      0.00s CPU      0.00s WALL
+
+     % Copyright (C) 2016-2023 EPW-Collaboration                                    
+                                                                                    
+     ===============================================================================
+     Please consider citing the following papers.                                   
+                                                                                                 
+     % Paper describing the method on which EPW relies                                           
+       F. Giustino and M. L. Cohen and S. G. Louie, Phys. Rev. B 76, 165108 (2007)               
+                                                                                                 
+     % Papers describing the EPW software                                                        
+       H. Lee et al., npj Comput. Mater. 9, 156 (2023)                                           
+       S. Ponc\'e, E.R. Margine, C. Verdi and F. Giustino, Comput. Phys. Commun. 209, 116 (2016) 
+       J. Noffsinger et al., Comput. Phys. Commun. 181, 2140 (2010)                              
+                                                                                                 
+                                                                                             
+     % Since you used the [eliashberg] input,     please consider also citing                    
+       E. R. Margine and F. Giustino, Phys. Rev. B 87, 024505 (2013)                         
+                                                                                    
+     For your convenience, this information is also reported in the                 
+     functionality-dependent EPW.bib file.                                          
+     ===============================================================================
+                                                                                    

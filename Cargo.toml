@@ -9,6 +9,7 @@ members = [
     "crates/wannier-interp",
     "crates/eph-selfen",
     "crates/eph-driver",
+    "crates/eliashberg",
 ]
 resolver = "2"
 
@@ -31,6 +32,8 @@ tenferro-cpu = "0.7.1"
 tenferro-einsum = "0.7.1"
 tenferro-linalg = "0.7.1"
 tenferro-fft = "0.7.1"
+# Intermediate-representation basis (optional feature of `eliashberg`); built on tenferro-tensor 0.7.1.
+sparse-ir = "0.13.0"
 
 phys-units = { path = "crates/phys-units" }
 eph-comm = { path = "crates/eph-comm" }
@@ -41,6 +44,7 @@ eph-io-epw = { path = "crates/eph-io-epw" }
 wannier-interp = { path = "crates/wannier-interp" }
 eph-selfen = { path = "crates/eph-selfen" }
 eph-driver = { path = "crates/eph-driver" }
+eliashberg = { path = "crates/eliashberg" }
 
 [profile.dev]
 debug = "line-tables-only"
