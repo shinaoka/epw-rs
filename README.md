@@ -32,7 +32,8 @@ cargo run --release -p eliashberg --features sparse-ir --example mgb2_ir_vs_unif
 - [docs/minimal_example_plan_ja.md](docs/minimal_example_plan_ja.md)：下流だけをテストする方法と，既存テストを元にした最小例（Pb の λ，α²F，Tc）の計画．
 - [docs/pb_reproduction_ja.md](docs/pb_reproduction_ja.md)：Pb の再現の作業記録（設計判断，EPW との一致，見つかった点）．
 - [docs/sparse_ir_analysis_ja.md](docs/sparse_ir_analysis_ja.md)：EPW の sparse-ir（IR 基底）実装の分析と Rust 版の方針．
-- [docs/eliashberg_ir_ja.md](docs/eliashberg_ir_ja.md)：等方的 Eliashberg 方程式と IR 基底の作業記録．
+- [docs/eliashberg_ir_ja.md](docs/eliashberg_ir_ja.md)：Eliashberg 方程式（等方的と異方的）と IR 基底の作業記録．
+- [docs/upstream_findings_ja.md](docs/upstream_findings_ja.md)：上流（EPW，tenferro-rs，sparse-ir）への報告候補．
 - [tests/fixtures/pb_epw_metal/README.md](tests/fixtures/pb_epw_metal/README.md)：fixture の由来，原著者，再生成の手順．
 - [docs/related/openmx_crates_and_license_ja.md](docs/related/openmx_crates_and_license_ja.md)：OpenMX 開発者向けの提案資料（AI 開発，crate 化，ライセンス）．EPW 提案で論点を流用するための参照用コピーです．原本は tensor4all-meta にあります．
 

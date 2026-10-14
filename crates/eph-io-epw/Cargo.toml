@@ -9,5 +9,6 @@ publish.workspace = true
 num-complex.workspace = true
 thiserror.workspace = true
 eph-wannier-data.workspace = true
+phys-units.workspace = true
 
 [dev-dependencies]

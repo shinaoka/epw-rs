@@ -29,8 +29,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let start = std::time::Instant::now();
     let set = IrBasisSet::new(1e5, 1e-10)?;
-    let mut ir = IrSum::new(&set, t, TauPoints::Default, kernel)?;
-    let sol_ir = solve_isotropic_fbw(&mut ir, &dos, &params)?;
+    let mut ir = IrSum::new(&set, t, &SamplingPoints::default(), kernel)?;
+    let sol_ir = solve_isotropic_fbw(&mut tenferro_cpu::CpuBackend::new(), &mut ir, &dos, &params)?;
     println!(
         "IR (Lambda 1e5, eps 1e-10): {} frequencies, {} iterations, {:.2} s",
         ir.indices().len(),
@@ -49,7 +49,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let start = std::time::Instant::now();
         let n = frequencies_below(wscut, t);
         let mut uniform = UniformSum::new(tenferro_cpu::CpuBackend::new(), t, n, kernel)?;
-        let sol = solve_isotropic_fbw(&mut uniform, &dos, &params)?;
+        let sol = solve_isotropic_fbw(
+            &mut tenferro_cpu::CpuBackend::new(),
+            &mut uniform,
+            &dos,
+            &params,
+        )?;
         println!(
             "{wscut:8.1} {n:7} {:7} {:8.2}   {:.10}  {:.10}  {:.10}   {:.2e}",
             sol.iterations,

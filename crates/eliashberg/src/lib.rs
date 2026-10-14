@@ -19,6 +19,7 @@
 //! # Ok::<(), eliashberg::Error>(())
 //! ```
 
+mod anisotropic;
 mod isotropic;
 mod matsubara;
 mod spectrum;
@@ -26,6 +27,10 @@ mod spectrum;
 #[cfg(feature = "sparse-ir")]
 mod ir;
 
+pub use anisotropic::{
+    solve_anisotropic_fbw, AnisotropicModel, AnisotropicParams, AnisotropicSolution, KernelEntry,
+    StateFrequencySum, UniformStateSum,
+};
 pub use isotropic::{
     free_energy_difference, normal_state_z, solve_isotropic_fbw, solve_isotropic_fsr, ElectronDos,
     IsotropicParams, IsotropicSolution,
@@ -34,7 +39,7 @@ pub use matsubara::{fermionic_frequency, frequencies_below, FrequencySum, Parity
 pub use spectrum::EliashbergSpectrum;
 
 #[cfg(feature = "sparse-ir")]
-pub use ir::{IrBasisSet, IrSum, TauPoints};
+pub use ir::{IrBasisSet, IrStateSum, IrSum, SamplingPoints};
 
 /// Errors of the Eliashberg solvers.
 #[derive(Debug, thiserror::Error)]

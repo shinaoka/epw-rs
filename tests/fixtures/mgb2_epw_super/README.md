@@ -1,6 +1,9 @@
-# Fixture: MgB2 (`epw_super`), isotropic Eliashberg
+# Fixture: MgB2 (`epw_super`), isotropic and anisotropic Eliashberg
 
-Inputs and EPW reference solutions for the isotropic Migdal–Eliashberg equations of MgB2. The Rust solvers (`crates/eliashberg`) read `iso/MgB2.a2f` and `iso/MgB2.dos` and must reproduce `iso/fsr/*` and `iso/fbw/*`.
+Inputs and EPW reference solutions for the Migdal–Eliashberg equations of MgB2.
+
+- **Isotropic:** the Rust solvers (`crates/eliashberg`) read `iso/MgB2.a2f` and `iso/MgB2.dos` and must reproduce `iso/fsr/*` and `iso/fbw/*`.
+- **Anisotropic (FBW):** they read `aniso/MgB2.ephmat/`, `aniso/selecq.fmt` and, for the IR runs, `aniso/ir_nlambda5_ndigit6.dat`, and must reproduce `aniso/uni/*` (uniform grid) and `aniso/ir/*` (IR basis).
 
 ## Origin and authors
 
@@ -14,6 +17,10 @@ Generated with **Quantum ESPRESSO 7.6** (tag `qe-7.6`, commit `9f93ddec427d2b9a4
 |---|---|
 | `iso/MgB2.a2f`, `iso/MgB2.dos`, `iso/crystal.fmt` | Written by `epw.x` running the unmodified `epw_super/epw1.in` after `scf`, `ph`, `scf_epw` and `nscf_epw` (with `pp.py`). |
 | `iso/fsr/iso_fsr.in`, `iso/fbw/iso_fbw.in` | **Written by us.** They take the Eliashberg settings of `epw1.in` (`muc = 0.16`, `wscut = 0.5` eV) and read `MgB2.a2f` (and `MgB2.dos`) through `fila2f`. They solve the FSR or FBW equations at 15 and 20 K with `conv_thr_iaxis = 1e-12`. |
+| `aniso/MgB2.ephmat/*`, `aniso/selecq.fmt`, `aniso/MgB2.a2f` | Written by `epw.x` running the unmodified `epw1.in` and `epw2.in`. `ephmat1` (10.9 MB) holds |g|^2/(2 omega) on the Fermi surface. |
+| `aniso/ir_nlambda5_ndigit6.dat` | Verbatim copy of `EPW/irobjs/ir_nlambda5_ndigit6.dat` from QE 7.6 (IR basis for Lambda = 1e5, epsilon = 1e-6, made with the Python sparse-ir package; part of EPW). |
+| `aniso/uni/aniso_uni.in`, `aniso/ir/aniso_ir.in` | **Modified** from `epw6.in` and `epw7.in` by us: `conv_thr_iaxis = 1e-10`, `temps = 20 30`, `nsiter = 5000`, `lpade = .false.`, `filirobj` set to an absolute path, and for `aniso_uni.in` `broyden_beta = -0.3` (linear mixing; Broyden mixing did not reach 1e-10). |
+| `aniso/uni/*`, `aniso/ir/*` (other files) | Output of `epw.x` for those inputs: standard output and `MgB2.imag_aniso_<T>` (omega, e - E_F, Z, Delta, chi for every Fermi-window state). |
 | `iso/fsr/*`, `iso/fbw/*` (other files) | Output of `epw.x` for those inputs: standard output and `MgB2.imag_iso_<T>` (omega, Z, Delta and, for FBW, chi). |
 
 ## How it was generated (2026-10-15)
@@ -34,4 +41,5 @@ There is no script yet; the steps are manual:
 ## Checks done
 
 - FSR and FBW: Z, Delta (and chi) agree with EPW to a relative 5e-11 at every Matsubara frequency, for both temperatures (`crates/eliashberg/tests/mgb2_isotropic.rs`). The FSR free energy and the McMillan T_c agree to the printed digits.
+- Anisotropic FBW, uniform grid: Z, Delta and chi agree with EPW to 5e-10 of their largest value for all 140 states and all frequencies at 20 and 30 K; the free energies agree to the printed digits (`crates/eph-driver/tests/mgb2_anisotropic.rs`).
 - EPW's FBW free energy matches the FSR Bardeen–Stephen expression with the normal-state Z_N **without** the factor pi of the FSR Z_N. The test records this convention.

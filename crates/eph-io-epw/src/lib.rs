@@ -25,6 +25,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 /// Number of type slots QE writes for `amass` (`ntypx`).
+pub mod ephmat;
 pub mod supercond;
 
 const QE_NTYPX: usize = 10;

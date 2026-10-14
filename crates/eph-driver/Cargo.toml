@@ -5,6 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+# IR-basis Matsubara sums in the Eliashberg solvers.
+sparse-ir = ["eliashberg/sparse-ir"]
+
 [[bin]]
 name = "epw-rs"
 path = "src/main.rs"
@@ -20,5 +24,6 @@ eph-wannier-data.workspace = true
 eph-io-epw.workspace = true
 wannier-interp.workspace = true
 eph-selfen.workspace = true
+eliashberg.workspace = true
 num-complex.workspace = true
 tenferro-tensor.workspace = true

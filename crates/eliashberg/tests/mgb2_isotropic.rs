@@ -131,7 +131,13 @@ fn fbw_matches_epw() {
     let dos = dos();
     for (t, label) in [(15.0, "015.00"), (20.0, "020.00")] {
         let mut sum = uniform_sum(&spectrum, kelvin(t));
-        let sol = solve_isotropic_fbw(&mut sum, &dos, &params()).unwrap();
+        let sol = solve_isotropic_fbw(
+            &mut tenferro_cpu::CpuBackend::new(),
+            &mut sum,
+            &dos,
+            &params(),
+        )
+        .unwrap();
         let rows = reference("fbw", label);
         let col = |c: usize| rows.iter().map(|r| r[c]).collect::<Vec<_>>();
         let (ez, ed, es) = (
@@ -158,7 +164,13 @@ fn fbw_free_energy_convention() {
     for (itemp, t) in [15.0, 20.0].into_iter().enumerate() {
         let tk = kelvin(t);
         let mut sum = uniform_sum(&spectrum, tk);
-        let sol = solve_isotropic_fbw(&mut sum, &dos, &params()).unwrap();
+        let sol = solve_isotropic_fbw(
+            &mut tenferro_cpu::CpuBackend::new(),
+            &mut sum,
+            &dos,
+            &params(),
+        )
+        .unwrap();
         let z_with_pi = normal_state_z(&mut sum).unwrap();
         let z_without_pi: Vec<f64> = z_with_pi
             .iter()

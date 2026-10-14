@@ -231,6 +231,7 @@ name = "eph-driver"
 version = "0.0.0"
 dependencies = [
  "bz-mesh",
+ "eliashberg",
  "eph-comm",
  "eph-io-epw",
  "eph-selfen",
@@ -250,6 +251,7 @@ version = "0.0.0"
 dependencies = [
  "eph-wannier-data",
  "num-complex",
+ "phys-units",
  "thiserror 2.0.21",
 ]
 

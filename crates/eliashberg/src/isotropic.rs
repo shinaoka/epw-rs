@@ -175,7 +175,7 @@ pub fn solve_isotropic_fsr(
     })
 }
 
-/// Solve the FBW equations with the electronic DOS.
+/// Solve the FBW equations with the electronic DOS; `backend` runs the energy integrals.
 ///
 /// # Errors
 ///
@@ -195,12 +195,13 @@ pub fn solve_isotropic_fsr(
 ///     spectrum.lambda_matsubara(&mut tenferro_cpu::CpuBackend::new(), nu)
 /// })?;
 /// let params = IsotropicParams { mu_star: 0.1, conv_thr: 1e-8, max_iter: 2000, mixing: 0.5, initial_gap: 0.002 };
-/// let sol = solve_isotropic_fbw(&mut sum, &dos, &params)?;
+/// let sol = solve_isotropic_fbw(&mut tenferro_cpu::CpuBackend::new(), &mut sum, &dos, &params)?;
 /// assert!(sol.delta[0] > 0.0);
 /// assert!(sol.shift[0].abs() < 1e-6); // particle-hole symmetric band
 /// # Ok::<(), eliashberg::Error>(())
 /// ```
 pub fn solve_isotropic_fbw(
+    backend: &mut CpuBackend,
     sum: &mut dyn FrequencySum,
     dos: &ElectronDos,
     params: &IsotropicParams,
@@ -214,7 +215,6 @@ pub fn solve_isotropic_fbw(
         .collect();
     let nf = omega.len();
     let ne = dos.energies.len();
-    let mut backend = CpuBackend::new();
     // Energy-integration weights N(e) de / N(E_F) and energies relative to mu.
     let weight = TypedTensor::from_vec_col_major(
         vec![ne],

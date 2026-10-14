@@ -39,8 +39,14 @@ fn ir_solution_is_basis_independent_and_approached_by_uniform_grids() {
     let mut gaps = Vec::new();
     for lambda in [1e5, 1e6] {
         let set = IrBasisSet::new(lambda, 1e-6).unwrap();
-        let mut sum = IrSum::new(&set, t, TauPoints::Default, kernel).unwrap();
-        let sol = solve_isotropic_fbw(&mut sum, &dos, &PARAMS).unwrap();
+        let mut sum = IrSum::new(&set, t, &SamplingPoints::default(), kernel).unwrap();
+        let sol = solve_isotropic_fbw(
+            &mut tenferro_cpu::CpuBackend::new(),
+            &mut sum,
+            &dos,
+            &PARAMS,
+        )
+        .unwrap();
         assert_eq!(sum.indices()[0], 0);
         println!(
             "IR Lambda {lambda:.0e}: {} points, Delta(0) = {:.8} meV, Z(0) = {:.8}",
@@ -67,7 +73,13 @@ fn ir_solution_is_basis_independent_and_approached_by_uniform_grids() {
             kernel,
         )
         .unwrap();
-        let sol = solve_isotropic_fbw(&mut sum, &dos, &PARAMS).unwrap();
+        let sol = solve_isotropic_fbw(
+            &mut tenferro_cpu::CpuBackend::new(),
+            &mut sum,
+            &dos,
+            &PARAMS,
+        )
+        .unwrap();
         let gap_error = (sol.delta[0] - ir_gap).abs() / ir_gap;
         println!(
             "uniform wscut {wscut} eV: Delta(0) = {:.8} meV, rel diff to IR {gap_error:.2e}",

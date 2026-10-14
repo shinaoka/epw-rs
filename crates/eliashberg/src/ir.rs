@@ -18,8 +18,12 @@
 //!
 //! Odd and even real functions of omega are passed as `i f` and `f`; both
 //! have real IR coefficients, so the positive-frequency samplings are used.
-//! All fits and evaluations are batched over the rows of the input.
+//! All fits and evaluations are batched over the trailing axes of the input.
+//!
+//! Sampling points change between sparse-ir versions and implementations; to
+//! reproduce another code, pin them with [`SamplingPoints`].
 
+use crate::anisotropic::{check_shape, AnisotropicModel, StateFrequencySum};
 use crate::matsubara::{check_rows, FrequencySum, Parity};
 use crate::Error;
 use num_complex::Complex64;
@@ -27,18 +31,25 @@ use sparse_ir::{
     Basis, Bosonic, BosonicBasis, Fermionic, FermionicBasis, LogisticKernel, MatsubaraFreq,
     MatsubaraSamplingPositiveOnly, SVEResult, TauSampling, TworkType,
 };
-use tenferro_tensor::TypedTensor;
+use tenferro_cpu::CpuBackend;
+use tenferro_einsum::TypedTensorEinsumExt;
+use tenferro_tensor::{BackendSessionHost, TypedTensor};
 
-/// Choice of the imaginary-time sampling points.
-#[derive(Debug, Clone, PartialEq)]
-pub enum TauPoints {
-    /// sparse-ir-rs default points.
-    Default,
-    /// Given points as `tau / beta` in `[-1, 1]`.
+/// Sampling points; `None` uses the sparse-ir-rs defaults.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct SamplingPoints {
+    /// Imaginary times as `tau / beta` in `[-1, 1]`.
     ///
     /// EPW's IR object files store `x` in `[-1, 1]` with `tau = beta (x + 1) / 2`,
     /// so pass `(x + 1) / 2`, not `x`.
-    Scaled(Vec<f64>),
+    pub tau: Option<Vec<f64>>,
+    /// Fermionic indices `n >= 0` (`omega_n = (2n + 1) pi T`).
+    pub fermionic: Option<Vec<i64>>,
+    /// Bosonic indices `m >= 0` (`nu_m = 2 m pi T`).
+    pub bosonic: Option<Vec<i64>>,
+    /// Reproduce EPW 6.1: when the basis size is odd, its fermionic
+    /// `evaluate_matsubara` omits the last coefficient. Off by default.
+    pub epw_drop_last_coefficient: bool,
 }
 
 /// The singular-value expansion of the logistic kernel, computed once and
@@ -111,25 +122,178 @@ impl IrBasisSet {
     }
 }
 
-/// [`FrequencySum`] on the positive fermionic IR sampling frequencies, without truncation.
-pub struct IrSum {
+/// Samplings shared by [`IrSum`] and [`IrStateSum`].
+struct IrSampling {
     temperature: f64,
     indices: Vec<i64>,
     matsubara: MatsubaraSamplingPositiveOnly<Fermionic>,
     tau: TauSampling<Fermionic>,
-    /// `lambda(tau) / T` on the τ points.
-    kernel_tau: Vec<f64>,
+    boson_matsubara: MatsubaraSamplingPositiveOnly<Bosonic>,
+    boson_tau: TauSampling<Bosonic>,
     /// `u_l(0^+) / T`.
     u_zero: Vec<f64>,
+    drop_last: bool,
+}
+
+impl IrSampling {
+    fn new(set: &IrBasisSet, temperature: f64, points: &SamplingPoints) -> Result<Self, Error> {
+        let beta = 1.0 / temperature;
+        let (fermionic, bosonic) = set.bases(beta)?;
+        let matsubara = match &points.fermionic {
+            None => MatsubaraSamplingPositiveOnly::<Fermionic>::new(&fermionic)?,
+            Some(ns) => MatsubaraSamplingPositiveOnly::<Fermionic>::with_sampling_points(
+                &fermionic,
+                ns.iter()
+                    .map(|n| MatsubaraFreq::new(2 * n + 1))
+                    .collect::<Result<_, _>>()?,
+            )?,
+        };
+        let tau = match &points.tau {
+            None => TauSampling::<Fermionic>::new(&fermionic)?,
+            Some(xs) => TauSampling::<Fermionic>::with_sampling_points(
+                &fermionic,
+                xs.iter().map(|x| x * beta).collect(),
+            )?,
+        };
+        let boson_matsubara = match &points.bosonic {
+            None => MatsubaraSamplingPositiveOnly::<Bosonic>::new(&bosonic)?,
+            Some(ms) => MatsubaraSamplingPositiveOnly::<Bosonic>::with_sampling_points(
+                &bosonic,
+                ms.iter()
+                    .map(|m| MatsubaraFreq::new(2 * m))
+                    .collect::<Result<_, _>>()?,
+            )?,
+        };
+        let boson_tau =
+            TauSampling::<Bosonic>::with_sampling_points(&bosonic, tau.sampling_points().to_vec())?;
+        let indices = matsubara
+            .sampling_points()
+            .iter()
+            .map(|f| (f.n() - 1) / 2)
+            .collect();
+        let u_zero_matrix = fermionic.evaluate_tau(&[0.0])?;
+        let u_zero: Vec<f64> = u_zero_matrix
+            .as_slice()?
+            .iter()
+            .map(|u| u / temperature)
+            .collect();
+        let drop_last = points.epw_drop_last_coefficient && u_zero.len() % 2 == 1;
+        Ok(Self {
+            temperature,
+            indices,
+            matsubara,
+            tau,
+            boson_matsubara,
+            boson_tau,
+            u_zero,
+            drop_last,
+        })
+    }
+
+    fn boson_frequencies(&self) -> Vec<f64> {
+        let pi_t = std::f64::consts::PI * self.temperature;
+        self.boson_matsubara
+            .sampling_points()
+            .iter()
+            .map(|f| f.n() as f64 * pi_t)
+            .collect()
+    }
+
+    /// Real bosonic kernel values `(nboson, ...)` -> `lambda(tau) / T` on the τ points `(ntau, ...)`.
+    fn kernel_tau(&self, values: &TypedTensor<f64>) -> Result<TypedTensor<f64>, Error> {
+        let complex: Vec<Complex64> = values
+            .as_slice()?
+            .iter()
+            .map(|&v| Complex64::new(v, 0.0))
+            .collect();
+        let complex = TypedTensor::from_vec_col_major(values.shape().to_vec(), complex)?;
+        let coeffs = self.boson_matsubara.fit_nd(None, &complex, 0)?;
+        let tau = self.boson_tau.evaluate_nd(None, &coeffs, 0)?;
+        let scaled: Vec<f64> = tau
+            .as_slice()?
+            .iter()
+            .map(|k| k / self.temperature)
+            .collect();
+        Ok(TypedTensor::from_vec_col_major(
+            tau.shape().to_vec(),
+            scaled,
+        )?)
+    }
+
+    /// Fit odd/even real functions given at the positive fermionic points (axis 0).
+    fn coefficients(
+        &self,
+        f: &TypedTensor<f64>,
+        parity: Parity,
+    ) -> Result<TypedTensor<f64>, Error> {
+        let values: Vec<Complex64> = f
+            .as_slice()?
+            .iter()
+            .map(|&v| match parity {
+                Parity::Odd => Complex64::new(0.0, v),
+                Parity::Even => Complex64::new(v, 0.0),
+            })
+            .collect();
+        let values = TypedTensor::from_vec_col_major(f.shape().to_vec(), values)?;
+        Ok(self.matsubara.fit_nd(None, &values, 0)?)
+    }
+
+    fn to_tau(&self, f: &TypedTensor<f64>, parity: Parity) -> Result<TypedTensor<f64>, Error> {
+        Ok(self
+            .tau
+            .evaluate_nd(None, &self.coefficients(f, parity)?, 0)?)
+    }
+
+    fn back_from_tau(
+        &self,
+        c_tau: &TypedTensor<f64>,
+        parity: Parity,
+    ) -> Result<TypedTensor<f64>, Error> {
+        let mut coeffs = self.tau.fit_nd(None, c_tau, 0)?;
+        if self.drop_last {
+            let size = self.u_zero.len();
+            let mut data = coeffs.as_slice()?.to_vec();
+            for column in data.chunks_exact_mut(size) {
+                column[size - 1] = 0.0;
+            }
+            coeffs = TypedTensor::from_vec_col_major(coeffs.shape().to_vec(), data)?;
+        }
+        let c = self.matsubara.evaluate_nd(None, &coeffs, 0)?;
+        let out: Vec<f64> = c
+            .as_slice()?
+            .iter()
+            .map(|z| match parity {
+                Parity::Odd => z.im,
+                Parity::Even => z.re,
+            })
+            .collect();
+        Ok(TypedTensor::from_vec_col_major(c.shape().to_vec(), out)?)
+    }
+
+    fn sum_even(&self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error> {
+        let coeffs = self.coefficients(f, Parity::Even)?;
+        Ok(coeffs
+            .as_slice()?
+            .chunks_exact(self.u_zero.len())
+            .map(|row| row.iter().zip(&self.u_zero).map(|(c, u)| c * u).sum())
+            .collect())
+    }
+}
+
+/// [`FrequencySum`] on the positive fermionic IR sampling frequencies, without truncation.
+pub struct IrSum {
+    sampling: IrSampling,
+    /// `lambda(tau) / T` on the τ points.
+    kernel_tau: Vec<f64>,
 }
 
 impl std::fmt::Debug for IrSum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("IrSum")
-            .field("temperature", &self.temperature)
-            .field("n_matsubara", &self.indices.len())
+            .field("temperature", &self.sampling.temperature)
+            .field("n_matsubara", &self.sampling.indices.len())
             .field("n_tau", &self.kernel_tau.len())
-            .field("basis_size", &self.u_zero.len())
+            .field("basis_size", &self.sampling.u_zero.len())
             .finish()
     }
 }
@@ -149,65 +313,23 @@ impl IrSum {
     /// ```
     /// use eliashberg::*;
     /// let set = IrBasisSet::new(1e3, 1e-10)?;
-    /// let sum = IrSum::new(&set, 0.01, TauPoints::Default, |nu| Ok(vec![0.0; nu.len()]))?;
+    /// let sum = IrSum::new(&set, 0.01, &SamplingPoints::default(), |nu| Ok(vec![0.0; nu.len()]))?;
     /// assert!(sum.indices().iter().all(|&n| n >= 0));
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
     pub fn new(
         set: &IrBasisSet,
         temperature: f64,
-        tau_points: TauPoints,
+        points: &SamplingPoints,
         kernel: impl FnOnce(&[f64]) -> Result<Vec<f64>, Error>,
     ) -> Result<Self, Error> {
-        let beta = 1.0 / temperature;
-        let (fermionic, bosonic) = set.bases(beta)?;
-        let matsubara = MatsubaraSamplingPositiveOnly::<Fermionic>::new(&fermionic)?;
-        let tau = match tau_points {
-            TauPoints::Default => TauSampling::<Fermionic>::new(&fermionic)?,
-            TauPoints::Scaled(points) => TauSampling::<Fermionic>::with_sampling_points(
-                &fermionic,
-                points.iter().map(|x| x * beta).collect(),
-            )?,
-        };
-        let indices = matsubara
-            .sampling_points()
-            .iter()
-            .map(|f| (f.n() - 1) / 2)
-            .collect();
-
-        // lambda(i nu) at the bosonic sampling frequencies -> coefficients -> lambda(tau).
-        let boson_points = MatsubaraSamplingPositiveOnly::<Bosonic>::new(&bosonic)?;
-        let nu: Vec<f64> = boson_points
-            .sampling_points()
-            .iter()
-            .map(|f: &MatsubaraFreq<Bosonic>| f.n() as f64 * std::f64::consts::PI * temperature)
-            .collect();
-        let values: Vec<Complex64> = kernel(&nu)?
-            .into_iter()
-            .map(|v| Complex64::new(v, 0.0))
-            .collect();
-        let coeffs = boson_points.fit(&values)?;
-        let boson_tau =
-            TauSampling::<Bosonic>::with_sampling_points(&bosonic, tau.sampling_points().to_vec())?;
-        let kernel_tau = boson_tau
-            .evaluate(&coeffs)?
-            .into_iter()
-            .map(|k| k / temperature)
-            .collect();
-
-        let u_zero_matrix = fermionic.evaluate_tau(&[0.0])?;
-        let u_zero = u_zero_matrix
-            .as_slice()?
-            .iter()
-            .map(|u| u / temperature)
-            .collect();
+        let sampling = IrSampling::new(set, temperature, points)?;
+        let nu = sampling.boson_frequencies();
+        let values = TypedTensor::from_vec_col_major(vec![nu.len()], kernel(&nu)?)?;
+        let kernel_tau = sampling.kernel_tau(&values)?.as_slice()?.to_vec();
         Ok(Self {
-            temperature,
-            indices,
-            matsubara,
-            tau,
+            sampling,
             kernel_tau,
-            u_zero,
         })
     }
 
@@ -218,40 +340,22 @@ impl IrSum {
     /// ```
     /// use eliashberg::*;
     /// let set = IrBasisSet::new(1e2, 1e-8)?;
-    /// let sum = IrSum::new(&set, 0.1, TauPoints::Default, |nu| Ok(vec![0.0; nu.len()]))?;
+    /// let sum = IrSum::new(&set, 0.1, &SamplingPoints::default(), |nu| Ok(vec![0.0; nu.len()]))?;
     /// assert!(sum.tau_points().iter().any(|&t| t < 0.0)); // sparse-ir-rs: [-beta/2, beta/2]
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
     pub fn tau_points(&self) -> &[f64] {
-        self.tau.sampling_points()
-    }
-
-    /// Fit rows of an odd/even real function given at the positive sampling frequencies.
-    fn coefficients(
-        &self,
-        f: &TypedTensor<f64>,
-        parity: Parity,
-    ) -> Result<TypedTensor<f64>, Error> {
-        let values: Vec<Complex64> = f
-            .as_slice()?
-            .iter()
-            .map(|&v| match parity {
-                Parity::Odd => Complex64::new(0.0, v),
-                Parity::Even => Complex64::new(v, 0.0),
-            })
-            .collect();
-        let values = TypedTensor::from_vec_col_major(f.shape().to_vec(), values)?;
-        Ok(self.matsubara.fit_nd(None, &values, 0)?)
+        self.sampling.tau.sampling_points()
     }
 }
 
 impl FrequencySum for IrSum {
     fn temperature(&self) -> f64 {
-        self.temperature
+        self.sampling.temperature
     }
 
     fn indices(&self) -> &[i64] {
-        &self.indices
+        &self.sampling.indices
     }
 
     fn convolve(
@@ -259,9 +363,8 @@ impl FrequencySum for IrSum {
         f: &TypedTensor<f64>,
         parity: Parity,
     ) -> Result<TypedTensor<f64>, Error> {
-        check_rows(f, self.indices.len())?;
-        let coeffs = self.coefficients(f, parity)?;
-        let f_tau = self.tau.evaluate_nd(None, &coeffs, 0)?;
+        check_rows(f, self.sampling.indices.len())?;
+        let f_tau = self.sampling.to_tau(f, parity)?;
         let ntau = self.kernel_tau.len();
         let product: Vec<f64> = f_tau
             .as_slice()?
@@ -270,27 +373,102 @@ impl FrequencySum for IrSum {
             .map(|(i, v)| v * self.kernel_tau[i % ntau])
             .collect();
         let product = TypedTensor::from_vec_col_major(f_tau.shape().to_vec(), product)?;
-        let c_coeffs = self.tau.fit_nd(None, &product, 0)?;
-        let c = self.matsubara.evaluate_nd(None, &c_coeffs, 0)?;
-        let out: Vec<f64> = c
-            .as_slice()?
-            .iter()
-            .map(|z| match parity {
-                Parity::Odd => z.im,
-                Parity::Even => z.re,
-            })
-            .collect();
-        Ok(TypedTensor::from_vec_col_major(c.shape().to_vec(), out)?)
+        self.sampling.back_from_tau(&product, parity)
     }
 
     fn sum_even(&mut self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error> {
-        check_rows(f, self.indices.len())?;
-        let coeffs = self.coefficients(f, Parity::Even)?;
-        let size = self.u_zero.len();
-        Ok(coeffs
-            .as_slice()?
-            .chunks_exact(size)
-            .map(|row| row.iter().zip(&self.u_zero).map(|(c, u)| c * u).sum())
-            .collect())
+        check_rows(f, self.sampling.indices.len())?;
+        self.sampling.sum_even(f)
+    }
+}
+
+/// [`StateFrequencySum`] with the IR basis: the kernel matrix `L_{ss'}` is
+/// transformed to τ once; each convolution is a batched matrix-vector product per τ point.
+pub struct IrStateSum {
+    sampling: IrSampling,
+    /// `L_{ss'}(tau) / T`, shape `(ntau, nstates, nstates)`.
+    kernel_tau: TypedTensor<f64>,
+    backend: CpuBackend,
+}
+
+impl std::fmt::Debug for IrStateSum {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IrStateSum")
+            .field("temperature", &self.sampling.temperature)
+            .field("n_matsubara", &self.sampling.indices.len())
+            .field("kernel_tau_shape", &self.kernel_tau.shape())
+            .finish()
+    }
+}
+
+impl IrStateSum {
+    /// Build the sum for `model` at temperature `T` (eV).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::SparseIr`] for basis or sampling failures, tensor errors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use eliashberg::*;
+    /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
+    ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, omega: 0.05, weight: 0.025 }] };
+    /// let set = IrBasisSet::new(1e3, 1e-10)?;
+    /// let sum = IrStateSum::new(tenferro_cpu::CpuBackend::new(), &set, &m, 0.002, &SamplingPoints::default())?;
+    /// assert!(!sum.indices().is_empty());
+    /// # Ok::<(), eliashberg::Error>(())
+    /// ```
+    pub fn new(
+        backend: CpuBackend,
+        set: &IrBasisSet,
+        model: &AnisotropicModel,
+        temperature: f64,
+        points: &SamplingPoints,
+    ) -> Result<Self, Error> {
+        let sampling = IrSampling::new(set, temperature, points)?;
+        let nu = sampling.boson_frequencies();
+        let ns = model.nstates();
+        // L[s, s', l] -> (l, s, s') for the fit along the bosonic axis.
+        let kernel = model.kernel_matsubara(&nu)?;
+        let mut backend = backend;
+        let kernel = backend.with_backend_session(|s| [&kernel].einsum("sql->lsq", s))?;
+        let kernel_tau = sampling.kernel_tau(&kernel)?;
+        debug_assert_eq!(kernel_tau.shape()[1..], [ns, ns]);
+        Ok(Self {
+            sampling,
+            kernel_tau,
+            backend,
+        })
+    }
+}
+
+impl StateFrequencySum for IrStateSum {
+    fn temperature(&self) -> f64 {
+        self.sampling.temperature
+    }
+
+    fn indices(&self) -> &[i64] {
+        &self.sampling.indices
+    }
+
+    fn convolve(
+        &mut self,
+        f: &TypedTensor<f64>,
+        parity: Parity,
+    ) -> Result<TypedTensor<f64>, Error> {
+        let ns = self.kernel_tau.shape()[1];
+        check_shape(f, self.sampling.indices.len(), ns)?;
+        let f_tau = self.sampling.to_tau(f, parity)?;
+        let c_tau = self
+            .backend
+            .with_backend_session(|s| [&self.kernel_tau, &f_tau].einsum("tsq,tq->ts", s))?;
+        self.sampling.back_from_tau(&c_tau, parity)
+    }
+
+    fn sum_even(&mut self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error> {
+        let ns = self.kernel_tau.shape()[1];
+        check_shape(f, self.sampling.indices.len(), ns)?;
+        self.sampling.sum_even(f)
     }
 }

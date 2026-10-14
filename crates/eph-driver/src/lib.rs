@@ -22,6 +22,7 @@
 //! ```
 
 pub mod output;
+pub mod supercond;
 
 use bz_mesh::UniformMesh;
 use eph_comm::{Comm, Partition};
