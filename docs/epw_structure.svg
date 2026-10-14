@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="626" viewBox="0 0 680 626" role="img"><title>EPW と Quantum ESPRESSO の結合構造</title><desc>QE の出力を使う EPW 上流は QE 内部に深く結合し，Wannier 表現の境界データを経て，結合の浅い下流の物性計算へ流れる．sparse-ir は複製で取り込まれ，大域変数とテストは全体で共有されている．</desc>
+<style>
+svg{background:#ffffff;font-family:"Hiragino Sans","Noto Sans CJK JP",sans-serif}
+.th{font-size:14px;font-weight:600;fill:#1f2328}
+.ts{font-size:12px;fill:#57606a}
+.arr{stroke:#57606a;stroke-width:1.5;fill:none}
+.c-gray rect{fill:#f1f3f5;stroke:#8c959f}
+.c-coral rect{fill:#fde4dc;stroke:#d9734f}
+.c-teal rect{fill:#d8f3ef;stroke:#2a9d8f}
+.c-purple rect{fill:#ebe3fa;stroke:#7c5cc4}
+</style><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<g class="c-gray"><rect x="40" y="30" width="600" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="48" text-anchor="middle" dominant-baseline="central">Quantum ESPRESSO（pw.x，ph.x）</text>
+<text class="ts" x="340" y="68" text-anchor="middle" dominant-baseline="central">波動関数，dvscf，USPP/PAW，DFT+U</text></g>
+<line x1="340" y1="86" x2="340" y2="126" class="arr" marker-end="url(#arrow)"/>
+<g class="c-coral"><rect x="40" y="130" width="600" height="140" rx="20" stroke-width="0.5"/>
+<text class="th" x="340" y="152" text-anchor="middle" dominant-baseline="central">EPW 上流：QE 内部に深く結合（約 9,750 行）</text>
+<text class="ts" x="340" y="172" text-anchor="middle" dominant-baseline="central">QE の内部モジュールを直接 USE</text></g>
+<g class="c-coral"><rect x="60" y="192" width="170" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="145" y="210" text-anchor="middle" dominant-baseline="central">粗い格子の g</text>
+<text class="ts" x="145" y="230" text-anchor="middle" dominant-baseline="central">ep_coarse，dvqpsi</text></g>
+<g class="c-coral"><rect x="255" y="192" width="170" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="210" text-anchor="middle" dominant-baseline="central">Wannier 化</text>
+<text class="ts" x="340" y="230" text-anchor="middle" dominant-baseline="central">pw2wan，wannier90</text></g>
+<g class="c-coral"><rect x="450" y="192" width="170" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="535" y="210" text-anchor="middle" dominant-baseline="central">DFPT 内部の準備</text>
+<text class="ts" x="535" y="230" text-anchor="middle" dominant-baseline="central">init，setups，dvqhub</text></g>
+<line x1="340" y1="270" x2="340" y2="288" class="arr" marker-end="url(#arrow)"/>
+<rect x="120" y="290" width="440" height="40" rx="4" fill="none" stroke="#57606a" stroke-width="1" stroke-dasharray="5 4"/>
+<text class="th" x="340" y="310" text-anchor="middle" dominant-baseline="central">境界候補：g(R_e, R_p)，H(R)，力定数，格子・原子</text>
+<line x1="340" y1="330" x2="340" y2="348" class="arr" marker-end="url(#arrow)"/>
+<g class="c-teal"><rect x="40" y="350" width="600" height="140" rx="20" stroke-width="0.5"/>
+<text class="th" x="340" y="372" text-anchor="middle" dominant-baseline="central">EPW 下流：QE との結合は浅い（全体の約 7 割）</text>
+<text class="ts" x="340" y="392" text-anchor="middle" dominant-baseline="central">QE からは MPI ラッパー，格子，定数程度</text></g>
+<g class="c-teal"><rect x="60" y="412" width="125" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="122" y="430" text-anchor="middle" dominant-baseline="central">Wannier 補間</text>
+<text class="ts" x="122" y="450" text-anchor="middle" dominant-baseline="central">wannier2bloch</text></g>
+<g class="c-teal"><rect x="205" y="412" width="125" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="267" y="430" text-anchor="middle" dominant-baseline="central">自己エネルギー</text>
+<text class="ts" x="267" y="450" text-anchor="middle" dominant-baseline="central">selfen，spectral</text></g>
+<g class="c-teal"><rect x="350" y="412" width="125" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="412" y="430" text-anchor="middle" dominant-baseline="central">輸送・ポーラロン</text>
+<text class="ts" x="412" y="450" text-anchor="middle" dominant-baseline="central">transport，polaron</text></g>
+<g class="c-teal"><rect x="495" y="412" width="125" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="557" y="430" text-anchor="middle" dominant-baseline="central">超伝導</text>
+<text class="ts" x="557" y="450" text-anchor="middle" dominant-baseline="central">Eliashberg</text></g>
+<line x1="557" y1="528" x2="557" y2="471" class="arr" marker-end="url(#arrow)"/>
+<g class="c-gray"><rect x="40" y="530" width="180" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="130" y="548" text-anchor="middle" dominant-baseline="central">global_var</text>
+<text class="ts" x="130" y="568" text-anchor="middle" dominant-baseline="central">約 290 変数を全体で共有</text></g>
+<g class="c-gray"><rect x="250" y="530" width="180" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="548" text-anchor="middle" dominant-baseline="central">回帰テストのみ</text>
+<text class="ts" x="340" y="568" text-anchor="middle" dominant-baseline="central">epw_* 21 件，全系実行</text></g>
+<g class="c-purple"><rect x="460" y="530" width="180" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="550" y="548" text-anchor="middle" dominant-baseline="central">sparse_ir.f90</text>
+<text class="ts" x="550" y="568" text-anchor="middle" dominant-baseline="central">Fortran 版を複製，約 4 千行</text></g>
+</svg>
