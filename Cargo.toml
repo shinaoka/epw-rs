@@ -17,7 +17,9 @@ resolver = "2"
 version = "0.0.0"
 edition = "2021"
 rust-version = "1.96"
-# Technical demonstration for the EPW developers only; see README.md.
+# EPW's licence is carried over: GPL-2.0. See LICENSE and AUTHORS.md.
+license = "GPL-2.0-only"
+authors = ["Hiroshi Shinaoka", "The EPW Collaboration (algorithms and reference data)"]
 publish = false
 
 [workspace.dependencies]

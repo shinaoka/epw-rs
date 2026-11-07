@@ -133,3 +133,9 @@ The design notes and work logs are in Japanese.
 - **Copyright.** Copyright of those programs, inputs and outputs stays with their original authors: the Quantum ESPRESSO group and the EPW developers.
 - **Licence.** QE and EPW are distributed under the GNU GPL (v2 or later). A copy of the licence is in `tests/fixtures/pb_epw_metal/LICENSE-QE`.
 - **Details.** The fixture READMEs list the authors of each test case and say which inputs we modified.
+
+## License
+
+GNU General Public License, version 2 — the same licence as EPW, carried over because the
+design, the algorithms and the reference data are EPW's. See [LICENSE](LICENSE) and
+[AUTHORS.md](AUTHORS.md) for the copyright and the papers to cite.
