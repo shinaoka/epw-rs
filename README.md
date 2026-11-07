@@ -1,8 +1,8 @@
 # epw-rs
 
-> **Not intended for publication.** This repository is a **technical demonstration for the EPW development team** only.
-> It is not a released product, is not published on crates.io, and makes no claim to replace or compete with EPW.
-> EPW and Quantum ESPRESSO remain the reference implementations; all numbers here are validated against them.
+> A technical demonstration of verifying **tenferro-rs**' capabilities, and of porting a first-principles
+> calculation through AI-agent development. EPW and Quantum ESPRESSO remain the reference implementations;
+> every number here is validated against them.
 
 epw-rs is an experimental Rust re-implementation of the EPW *downstream*: everything after the Wannier-representation data (`epwwrite`/`ephwrite`) has been written. It is meant to show the EPW developers a working, testable minimal example of what a modular downstream could look like.
 
