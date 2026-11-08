@@ -1,9 +1,9 @@
 //! The isotropic Eliashberg spectral function alpha^2F(omega) and its moments.
 
 use crate::Error;
-use tenferro_cpu::CpuBackend;
+use tenferro_cpu::CpuEngine;
 use tenferro_einsum::TypedTensorEinsumExt;
-use tenferro_tensor::{BackendSessionHost, TypedTensor};
+use tenferro_tensor::TypedTensor;
 
 /// alpha^2F on a uniform frequency grid `omega_i = i * d omega` (i = 1..n), energies in eV.
 ///
@@ -88,16 +88,12 @@ impl EliashbergSpectrum {
     ///
     /// ```
     /// let s = eliashberg::EliashbergSpectrum::new(vec![0.01, 0.02], vec![0.0, 1.0])?;
-    /// let mut backend = tenferro_cpu::CpuBackend::new();
+    /// let mut backend = tenferro_cpu::CpuEngine::new(tenferro_cpu::Pool::builder().build().unwrap());
     /// let l = s.lambda_matsubara(&mut backend, &[0.0])?;
     /// assert!((l[0] - s.lambda()).abs() < 1e-14);
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
-    pub fn lambda_matsubara(
-        &self,
-        backend: &mut CpuBackend,
-        nu: &[f64],
-    ) -> Result<Vec<f64>, Error> {
+    pub fn lambda_matsubara(&self, backend: &mut CpuEngine, nu: &[f64]) -> Result<Vec<f64>, Error> {
         let n = self.omega.len();
         let mut weights = Vec::with_capacity(n * nu.len());
         for &v in nu {
@@ -109,7 +105,7 @@ impl EliashbergSpectrum {
         }
         let weights = TypedTensor::from_vec_col_major(vec![n, nu.len()], weights)?;
         let a2f = TypedTensor::from_vec_col_major(vec![n], self.a2f.clone())?;
-        let out = backend.with_backend_session(|s| [&weights, &a2f].einsum("ik,i->k", s))?;
+        let out = [&weights, &a2f].einsum("ik,i->k", &mut *backend)?;
         Ok(out.as_slice()?.to_vec())
     }
 

@@ -28,9 +28,9 @@
 use eph_comm::ReduceKind;
 use num_complex::Complex64;
 use std::ops::Range;
-use tenferro_cpu::CpuBackend;
+use tenferro_cpu::CpuEngine;
 use tenferro_einsum::TypedTensorEinsumExt;
-use tenferro_tensor::{BackendSessionHost, TypedTensor};
+use tenferro_tensor::TypedTensor;
 
 /// Errors from the self-energy and alpha^2F evaluation.
 #[derive(Debug, thiserror::Error)]
@@ -135,12 +135,13 @@ impl QQuantity for EliashbergFunction {
 /// let fs = FermiSurface { fermi_energy: 0.0, dos_per_spin: 1.0, band_window: 0..1 };
 /// let data = QPointData { nbnd: 1, omega: &[0.01], g: &[Complex64::default(); 2],
 ///     energies_k: &[0.0, 0.0], energies_kq: &[0.0, 0.0], weights: &[1.0, 1.0] };
-/// let lw = phonon_linewidth(&mut tenferro_cpu::CpuBackend::new(), &data, &fs, &params)?;
+/// let mut engine = tenferro_cpu::CpuEngine::new(tenferro_cpu::Pool::builder().build().unwrap());
+/// let lw = phonon_linewidth(&mut engine, &data, &fs, &params)?;
 /// assert_eq!(lw.gamma, vec![0.0]);
 /// # Ok::<(), eph_selfen::Error>(())
 /// ```
 pub fn phonon_linewidth(
-    backend: &mut CpuBackend,
+    backend: &mut CpuEngine,
     data: &QPointData<'_>,
     fs: &FermiSurface,
     params: &LinewidthParams,
@@ -216,10 +217,11 @@ pub fn phonon_linewidth(
     let coupling = TypedTensor::from_vec_col_major(vec![npair, nm], coupling)?;
     // Pairwise in a fixed order: multi-operand einsum paths are chosen by the
     // planner and may change the last bits between calls.
-    let gamma_raw = backend.with_backend_session(|s| -> Result<TypedTensor<f64>, Error> {
+    let gamma_raw = {
+        let s = &mut *backend;
         let weighted = [&delta, &coupling].einsum("xv,xv->xv", s)?;
-        Ok([&pair_factor, &weighted].einsum("x,xv->v", s)?)
-    })?;
+        [&pair_factor, &weighted].einsum("x,xv->v", s)?
+    };
     let gamma_raw = gamma_raw.as_slice()?;
 
     // Average over degenerate modes.
@@ -292,13 +294,14 @@ pub struct EliashbergFunction {
 /// use eph_selfen::*;
 /// let lw = Linewidth { omega: vec![0.01], gamma: vec![0.0], lambda: vec![1.0] };
 /// let p = EliashbergParams { nstep: 2000, sigma: 2e-4, nsmear: 1, sigma_step: 0.0, eps_acoustic: 1e-8 };
-/// let a2f = eliashberg_function(&mut tenferro_cpu::CpuBackend::new(), &[lw], 1.0, &p)?;
+/// let mut engine = tenferro_cpu::CpuEngine::new(tenferro_cpu::Pool::builder().build().unwrap());
+/// let a2f = eliashberg_function(&mut engine, &[lw], 1.0, &p)?;
 /// assert!((a2f.lambda_integrated[0] - 1.0).abs() < 1e-2);
 /// assert!((a2f.omega_log[0] - 0.01).abs() < 1e-4);
 /// # Ok::<(), eph_selfen::Error>(())
 /// ```
 pub fn eliashberg_function(
-    backend: &mut CpuBackend,
+    backend: &mut CpuEngine,
     linewidths: &[Linewidth],
     q_weight: f64,
     params: &EliashbergParams,
@@ -344,13 +347,14 @@ pub fn eliashberg_function(
         vec![params.nstep],
         omega.iter().map(|w| 2.0 * dw * w.ln() / w).collect(),
     )?;
-    let (a2f, dos, lambda_int, log_moment) = backend.with_backend_session(|s| {
+    let (a2f, dos, lambda_int, log_moment) = {
+        let s = &mut *backend;
         let a2f = [&kernel, &strength].einsum("wsx,x->ws", s)?;
         let dos = [&kernel, &dos_weight].einsum("wsx,x->ws", s)?;
         let lambda_int = [&a2f, &inv_omega].einsum("ws,w->s", s)?;
         let log_moment = [&a2f, &log_inv_omega].einsum("ws,w->s", s)?;
-        Ok::<_, Error>((a2f, dos, lambda_int, log_moment))
-    })?;
+        (a2f, dos, lambda_int, log_moment)
+    };
     let lambda_integrated = lambda_int.as_slice()?.to_vec();
     let omega_log = log_moment
         .as_slice()?

@@ -5,6 +5,7 @@
 
 use eliashberg::*;
 use std::path::{Path, PathBuf};
+use tenferro_cpu::{CpuEngine, Pool};
 
 const MU_STAR: f64 = 0.16;
 const WSCUT: f64 = 0.5;
@@ -71,9 +72,12 @@ fn max_rel(actual: &[f64], expected: &[f64]) -> f64 {
 
 fn uniform_sum(spectrum: &EliashbergSpectrum, t: f64) -> UniformSum {
     let n = frequencies_below(WSCUT, t);
-    UniformSum::new(tenferro_cpu::CpuBackend::new(), t, n, |nu| {
-        spectrum.lambda_matsubara(&mut tenferro_cpu::CpuBackend::new(), nu)
-    })
+    UniformSum::new(
+        CpuEngine::new(Pool::builder().build().unwrap()),
+        t,
+        n,
+        |nu| spectrum.lambda_matsubara(&mut CpuEngine::new(Pool::builder().build().unwrap()), nu),
+    )
     .unwrap()
 }
 
@@ -132,7 +136,7 @@ fn fbw_matches_epw() {
     for (t, label) in [(15.0, "015.00"), (20.0, "020.00")] {
         let mut sum = uniform_sum(&spectrum, kelvin(t));
         let sol = solve_isotropic_fbw(
-            &mut tenferro_cpu::CpuBackend::new(),
+            &mut CpuEngine::new(Pool::builder().build().unwrap()),
             &mut sum,
             &dos,
             &params(),
@@ -165,7 +169,7 @@ fn fbw_free_energy_convention() {
         let tk = kelvin(t);
         let mut sum = uniform_sum(&spectrum, tk);
         let sol = solve_isotropic_fbw(
-            &mut tenferro_cpu::CpuBackend::new(),
+            &mut CpuEngine::new(Pool::builder().build().unwrap()),
             &mut sum,
             &dos,
             &params(),

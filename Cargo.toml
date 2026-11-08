@@ -26,15 +26,16 @@ publish = false
 num-complex = "0.4"
 libm = "0.2"
 thiserror = "2"
-# tenferro is taken from crates.io (0.7.1). tensor4all-rs pins a git revision
+# tenferro is taken from crates.io (0.10.0). tensor4all-rs pins a git revision
 # instead; a registry version is enough for this demonstration.
-tenferro-tensor = "0.7.1"
-tenferro-runtime = "0.7.1"
-tenferro-cpu = "0.7.1"
-tenferro-einsum = "0.7.1"
-tenferro-linalg = "0.7.1"
-tenferro-fft = "0.7.1"
-# Intermediate-representation basis (optional feature of `eliashberg`); built on tenferro-tensor 0.7.1.
+tenferro-tensor = "0.10.0"
+tenferro-runtime = "0.10.0"
+tenferro-cpu = "0.10.0"
+tenferro-einsum = "0.10.0"
+tenferro-linalg = "0.10.0"
+tenferro-fft = "0.10.0"
+# Intermediate-representation basis (optional feature of `eliashberg`); still built on tenferro-tensor
+# 0.7.1, so it compiles a second tenferro next to ours (see crates/eliashberg/src/ir.rs).
 sparse-ir = "0.13.0"
 
 phys-units = { path = "crates/phys-units" }

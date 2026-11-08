@@ -53,9 +53,9 @@ pub enum Error {
     /// Distribution error.
     #[error("distribution failed")]
     Comm(#[from] eph_comm::Error),
-    /// The CPU backend could not be created.
-    #[error("cannot create the CPU backend")]
-    Backend(#[source] Box<tenferro_cpu::CpuBackendError>),
+    /// The CPU engine could not be created.
+    #[error("cannot create the CPU engine")]
+    Backend(#[source] Box<tenferro_cpu::threadteam::Error>),
     /// Unsupported setting.
     #[error("unsupported setting: {0}")]
     Unsupported(String),
@@ -70,8 +70,8 @@ pub enum Error {
     },
 }
 
-impl From<tenferro_cpu::CpuBackendError> for Error {
-    fn from(e: tenferro_cpu::CpuBackendError) -> Self {
+impl From<tenferro_cpu::threadteam::Error> for Error {
+    fn from(e: tenferro_cpu::threadteam::Error) -> Self {
         Self::Backend(Box::new(e))
     }
 }
@@ -199,10 +199,11 @@ pub fn run<Cm: Comm>(
     let fsthick = phys_units::ev_to_ry(config.fsthick_ev);
     let eps_acoustic = phys_units::cmm1_to_ry(config.eps_acoustic_cmm1);
 
-    let backend = || -> Result<tenferro_cpu::CpuBackend, Error> {
-        Ok(tenferro_cpu::CpuBackend::with_threads(
-            config.threads_per_rank.max(1),
-        )?)
+    let backend = || -> Result<tenferro_cpu::CpuEngine, Error> {
+        let pool = tenferro_cpu::Pool::builder()
+            .threads(config.threads_per_rank.max(1))
+            .build()?;
+        Ok(tenferro_cpu::CpuEngine::new(pool))
     };
     let mut interp = Interpolator::with_backend(backend()?);
     let bands = interp.electrons_with(model, &k_mesh, HermitianPart::Symmetrized)?;
@@ -319,9 +320,12 @@ fn linewidths_for_blocks(
 ) -> Vec<Result<Vec<Linewidth>, Error>> {
     let setup = || -> Result<_, Error> {
         let threads = config.threads_per_rank.max(1);
-        let mut interp =
-            Interpolator::with_backend(tenferro_cpu::CpuBackend::with_threads(threads)?);
-        let backend = tenferro_cpu::CpuBackend::with_threads(threads)?;
+        let engine = || -> Result<tenferro_cpu::CpuEngine, Error> {
+            let pool = tenferro_cpu::Pool::builder().threads(threads).build()?;
+            Ok(tenferro_cpu::CpuEngine::new(pool))
+        };
+        let mut interp = Interpolator::with_backend(engine()?);
+        let backend = engine()?;
         let phonons = interp.phonons(model, q_mesh)?;
         Ok((interp, backend, phonons))
     };
@@ -361,7 +365,7 @@ fn linewidths_for_blocks(
 fn block_linewidths(
     block: &[usize],
     interp: &mut Interpolator,
-    backend: &mut tenferro_cpu::CpuBackend,
+    backend: &mut tenferro_cpu::CpuEngine,
     phonons: &wannier_interp::Phonons,
     model: &WannierModel,
     vertex: &dyn EphMatrixSource,

@@ -35,7 +35,7 @@ FBW では μ* の項と χ が帯域幅（約 20 eV）まで寄与するので�
   - τ 点で評価し，λ(τ)/T と掛けて τ で fit し，松原点で評価します．
   - fit と evaluate は行（関数）を軸にしたバッチの nd 演算です．
 - **τ = 0⁺：** μ* の項の Σ_m f(m) は，係数と u_l(0⁺)（`evaluate_tau(&[0.0])`）の内積から厳密に取ります．EPW の fork のように「最初の正の τ 点」で代用することはしていません．
-- **sparse-ir-rs：** crates.io の `sparse-ir` 0.13.0 を使います．これは tenferro-tensor 0.7.1 の `TypedTensor` の上に作られているので，epw-rs のテンソルをそのまま渡せます．
+- **sparse-ir-rs：** crates.io の `sparse-ir` 0.13.0 を使います．これは tenferro-tensor 0.7.1 の `TypedTensor` の上に作られているので，epw-rs（tenferro-tensor 0.10.0）のテンソルは `ir.rs` の `to_ir`/`from_ir` で写してから渡します．sparse-ir が tenferro 0.10 に追随したら，この変換は消します．
 - **SVE の費用：** SVE は温度によらず 1 回だけ（`IrBasisSet`）です．費用は ε に強く依存します．Λ = 1e5 で ε = 1e-6 なら 0.24 秒，ε = 1e-10 では 29 秒かかります．畳み込み 1 回は 0.3 ms です．
 - **自己無撞着ループ：** 線形混合で，収束判定は Σ|ΔΔ|/Σ|Δ| です．固定点は混合法によらないので，EPW と比べるときは両方とも厳しい閾値まで収束させます．EPW の Broyden 混合は再現していません．
 

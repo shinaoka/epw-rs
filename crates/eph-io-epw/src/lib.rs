@@ -192,7 +192,7 @@ impl Reader {
 
     fn vec3s(&mut self, n: usize, what: &'static str) -> Result<Vec<[f64; 3]>, Error> {
         let flat = self.f64_vec(3 * n, what)?;
-        Ok(flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect())
+        Ok(flat.as_slice().as_chunks::<3>().0.to_vec())
     }
 }
 
@@ -394,7 +394,9 @@ const COMPLEX_BYTES: usize = 16;
 
 fn decode(bytes: &[u8]) -> Vec<Complex64> {
     bytes
-        .chunks_exact(COMPLEX_BYTES)
+        .as_chunks::<COMPLEX_BYTES>()
+        .0
+        .iter()
         .map(|c| {
             let re = f64::from_ne_bytes(c[..8].try_into().expect("chunk of 16 bytes"));
             let im = f64::from_ne_bytes(c[8..].try_into().expect("chunk of 16 bytes"));

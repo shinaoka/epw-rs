@@ -37,12 +37,12 @@ use bz_mesh::UniformMesh;
 use eph_wannier_data::{EphMatrixSource, WannierModel, WsVectors};
 use num_complex::Complex64;
 use std::ops::Range;
-use tenferro_cpu::CpuBackend;
+use tenferro_cpu::{CpuEngine, Pool};
 use tenferro_einsum::TypedTensorEinsumExt;
 use tenferro_fft::{FftNorm, TensorFftExt};
 use tenferro_linalg::TypedTensorLinalgExt;
 use tenferro_runtime::TypedTensorSessionOpsExt;
-use tenferro_tensor::{BackendSessionHost, Tensor, TypedTensor};
+use tenferro_tensor::{Tensor, TypedTensor};
 
 /// Errors from interpolation.
 #[derive(Debug, thiserror::Error)]
@@ -100,10 +100,10 @@ pub struct Phonons {
     pub displacements: TypedTensor<C>,
 }
 
-/// Owns the tensor backend and performs the interpolation steps.
+/// Owns the tensor engine and performs the interpolation steps.
 #[derive(Debug)]
 pub struct Interpolator {
-    backend: CpuBackend,
+    backend: CpuEngine,
 }
 
 impl Default for Interpolator {
@@ -113,31 +113,40 @@ impl Default for Interpolator {
 }
 
 impl Interpolator {
-    /// Create an interpolator with a default CPU backend.
+    /// Create an interpolator with a default CPU engine.
     ///
     /// # Examples
     ///
     /// ```
     /// let _interp = wannier_interp::Interpolator::new();
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the CPU pool cannot be started.
     pub fn new() -> Self {
         Self {
-            backend: CpuBackend::new(),
+            backend: CpuEngine::new(
+                Pool::builder()
+                    .build()
+                    .expect("cannot start the tenferro CPU pool"),
+            ),
         }
     }
 
-    /// Create an interpolator on a configured backend.
+    /// Create an interpolator on a configured engine.
     ///
-    /// Results are reproducible for a fixed backend thread count but can change
+    /// Results are reproducible for a fixed engine thread count but can change
     /// at the last-bit level when the thread count changes.
     ///
     /// # Examples
     ///
     /// ```
-    /// let backend = tenferro_cpu::CpuBackend::with_threads(1).unwrap();
+    /// let pool = tenferro_cpu::Pool::builder().threads(1).build().unwrap();
+    /// let backend = tenferro_cpu::CpuEngine::new(pool);
     /// let _interp = wannier_interp::Interpolator::with_backend(backend);
     /// ```
-    pub fn with_backend(backend: CpuBackend) -> Self {
+    pub fn with_backend(backend: CpuEngine) -> Self {
         Self { backend }
     }
 
@@ -166,15 +175,14 @@ impl Interpolator {
         let [n3, n2, n1] = mesh.fft_shape();
         let mut tensor = Tensor::from_vec_col_major(vec![block, n3, n2, n1], grid)?;
         // ifft with FftNorm::Forward is the unscaled sum with exp(+2 pi i k.R).
-        tensor = self
-            .backend
-            .with_backend_session(|s| -> Result<Tensor, Error> {
-                for axis in 1..=3 {
-                    tensor = tensor.ifft(None, axis, FftNorm::Forward, s)?;
-                }
-                Ok(tensor)
-            })?;
-        let (_, data) = tensor.into_typed::<C>()?.into_vec_col_major()?;
+        {
+            let s = &mut self.backend;
+            for axis in 1..=3 {
+                tensor = tensor.ifft(None, axis, FftNorm::Forward, s)?;
+            }
+        }
+        let tensor = tensor.into_typed::<C>().map_err(|f| f.into_parts().1)?;
+        let (_, data) = tensor.into_vec_col_major().map_err(|f| f.into_parts().1)?;
         Ok(TypedTensor::from_vec_col_major(vec![block, nk], data)?)
     }
 
@@ -183,14 +191,13 @@ impl Interpolator {
         &mut self,
         matrices: &TypedTensor<C>,
     ) -> Result<(Vec<f64>, TypedTensor<C>), Error> {
-        self.backend.with_backend_session(|s| -> Result<_, Error> {
-            let adjoint = [&matrices.conj(s)?].einsum("abk->bak", s)?;
-            let doubled = matrices.add(&adjoint, s)?;
-            let (values, vectors) = doubled.eigh(s)?;
-            // eig(A + A^dagger) / 2 is exact: halving is exact in floating point.
-            let values = values.as_slice()?.iter().map(|w| 0.5 * w).collect();
-            Ok((values, vectors))
-        })
+        let s = &mut self.backend;
+        let adjoint = [&matrices.conj(s)?].einsum("abk->bak", s)?;
+        let doubled = matrices.add(&adjoint, s)?;
+        let (values, vectors) = doubled.eigh(s)?;
+        // eig(A + A^dagger) / 2 is exact: halving is exact in floating point.
+        let values = values.as_slice()?.iter().map(|w| 0.5 * w).collect();
+        Ok((values, vectors))
     }
 
     /// Interpolate the electron Hamiltonian onto `mesh` and diagonalise it.
@@ -242,7 +249,7 @@ impl Interpolator {
         let hk = match part {
             HermitianPart::Symmetrized => self.reshape(hk, vec![nb, nb, mesh.len()])?,
             HermitianPart::LowerTriangle => {
-                let (_, mut data) = hk.into_vec_col_major()?;
+                let (_, mut data) = hk.into_vec_col_major().map_err(|f| f.into_parts().1)?;
                 for matrix in data.chunks_exact_mut(nb * nb) {
                     for j in 0..nb {
                         matrix[j + nb * j].im = 0.0;
@@ -292,9 +299,7 @@ impl Interpolator {
         let mass_factor = TypedTensor::from_vec_col_major(vec![nm, nm], mass_factor)?;
         let dq = self.sum_onto_mesh(&model.force_constants, nm * nm, &model.ws_q, mesh)?;
         let dq = self.reshape(dq, vec![nm, nm, mesh.len()])?;
-        let dq = self
-            .backend
-            .with_backend_session(|s| [&dq, &mass_factor].einsum("abq,ab->abq", s))?;
+        let dq = [&dq, &mass_factor].einsum("abq,ab->abq", &mut self.backend)?;
         let (omega2, modes) = self.hermitian_eigen(&dq)?;
         let frequencies = omega2
             .iter()
@@ -304,9 +309,7 @@ impl Interpolator {
             vec![nm],
             inv_sqrt_mass.iter().map(|&m| C::new(m, 0.0)).collect(),
         )?;
-        let displacements = self
-            .backend
-            .with_backend_session(|s| [&modes, &inv_sqrt_mass].einsum("avq,a->avq", s))?;
+        let displacements = [&modes, &inv_sqrt_mass].einsum("avq,a->avq", &mut self.backend)?;
         Ok(Phonons {
             nmodes: nm,
             frequencies,
@@ -315,7 +318,7 @@ impl Interpolator {
     }
 
     fn reshape(&mut self, t: TypedTensor<C>, shape: Vec<usize>) -> Result<TypedTensor<C>, Error> {
-        let (_, data) = t.into_vec_col_major()?;
+        let (_, data) = t.into_vec_col_major().map_err(|f| f.into_parts().1)?;
         Ok(TypedTensor::from_vec_col_major(shape, data)?)
     }
 
@@ -374,16 +377,12 @@ impl Interpolator {
                 std::mem::take(&mut buffer),
             )?;
             let p = TypedTensor::from_vec_col_major(vec![range.len(), nq], phases)?;
-            let partial = self
-                .backend
-                .with_backend_session(|s| [&g, &p].einsum("xr,rq->xq", s))?;
+            let partial = [&g, &p].einsum("xr,rq->xq", &mut self.backend)?;
             total = Some(match total {
                 None => partial,
-                Some(acc) => self
-                    .backend
-                    .with_backend_session(|s| acc.add(&partial, s))?,
+                Some(acc) => acc.add(&partial, &mut self.backend)?,
             });
-            buffer = g.into_vec_col_major()?.1;
+            buffer = g.into_vec_col_major().map_err(|f| f.into_parts().1)?.1;
             start = range.end;
         }
         let total = total.unwrap_or(TypedTensor::from_vec_col_major(
@@ -443,10 +442,8 @@ impl Interpolator {
         let shift = k_mesh.shift_table(q_mesh)?;
 
         // Bring R_e last so it can be summed onto the k mesh: (a, b, mu, q, R_e).
-        let moved = self
-            .backend
-            .with_backend_session(|s| [g_eq].einsum("abrmq->abmqr", s))?;
-        let (_, data) = moved.into_vec_col_major()?;
+        let moved = [g_eq].einsum("abrmq->abmqr", &mut self.backend)?;
+        let (_, data) = moved.into_vec_col_major().map_err(|f| f.into_parts().1)?;
         let gk = self.sum_onto_mesh(&data, nb * nb * nm * nq, ws_k, k_mesh)?;
         let gk = self.reshape(gk, vec![nb, nb, nm, nq, nk])?;
 
@@ -468,13 +465,9 @@ impl Interpolator {
         // Contract pairwise in a fixed order. A single four-operand einsum lets the
         // planner choose the path, and its choice was observed to vary between calls,
         // which changes results at the last-bit level.
-        let g = self
-            .backend
-            .with_backend_session(|s| -> Result<TypedTensor<C>, Error> {
-                let right = [&gk, &bands.rotations].einsum("abuqk,bnk->anuqk", s)?;
-                let both = [&ukq, &right].einsum("amkq,anuqk->mnukq", s)?;
-                Ok([&both, displacements].einsum("mnukq,uvq->mnkvq", s)?)
-            })?;
-        Ok(g)
+        let s = &mut self.backend;
+        let right = [&gk, &bands.rotations].einsum("abuqk,bnk->anuqk", s)?;
+        let both = [&ukq, &right].einsum("amkq,anuqk->mnukq", s)?;
+        Ok([&both, displacements].einsum("mnukq,uvq->mnkvq", s)?)
     }
 }

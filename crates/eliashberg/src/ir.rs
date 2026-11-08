@@ -31,9 +31,31 @@ use sparse_ir::{
     Basis, Bosonic, BosonicBasis, Fermionic, FermionicBasis, LogisticKernel, MatsubaraFreq,
     MatsubaraSamplingPositiveOnly, SVEResult, TauSampling, TworkType,
 };
-use tenferro_cpu::CpuBackend;
+use tenferro_cpu::CpuEngine;
 use tenferro_einsum::TypedTensorEinsumExt;
-use tenferro_tensor::{BackendSessionHost, TypedTensor};
+use tenferro_tensor::TypedTensor;
+
+// shortcut: sparse-ir 0.13/0.15 pin tenferro-tensor 0.7.1, so its sampling API takes
+// and returns that crate's tensor type. Copy across the boundary here; delete the two
+// helpers once sparse-ir moves to tenferro 0.10.
+/// Hand a tensor to sparse-ir.
+fn to_ir<T: sparse_ir::TensorScalar + Clone>(
+    t: &TypedTensor<T>,
+) -> Result<sparse_ir::TypedTensor<T>, Error> {
+    let data = t.as_slice()?.to_vec();
+    Ok(
+        sparse_ir::TypedTensor::from_vec_col_major(t.shape().to_vec(), data)
+            .map_err(sparse_ir::Error::from)?,
+    )
+}
+
+/// Take a tensor back from sparse-ir.
+fn from_ir<T: sparse_ir::TensorScalar>(
+    t: sparse_ir::TypedTensor<T>,
+) -> Result<TypedTensor<T>, Error> {
+    let (shape, data) = t.into_vec_col_major().map_err(sparse_ir::Error::from)?;
+    Ok(TypedTensor::from_vec_col_major(shape, data)?)
+}
 
 /// Sampling points; `None` uses the sparse-ir-rs defaults.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -187,12 +209,11 @@ impl IrSampling {
             .iter()
             .map(|f| (f.n() - 1) / 2)
             .collect();
-        let u_zero_matrix = fermionic.evaluate_tau(&[0.0])?;
-        let u_zero: Vec<f64> = u_zero_matrix
-            .as_slice()?
-            .iter()
-            .map(|u| u / temperature)
-            .collect();
+        let (_, u_zero) = fermionic
+            .evaluate_tau(&[0.0])?
+            .into_vec_col_major()
+            .map_err(sparse_ir::Error::from)?;
+        let u_zero: Vec<f64> = u_zero.iter().map(|u| u / temperature).collect();
         let drop_last = points.epw_drop_last_coefficient && u_zero.len() % 2 == 1;
         Ok(Self {
             temperature,
@@ -228,7 +249,7 @@ impl IrSampling {
             .map(|&v| Complex64::new(v, 0.0))
             .collect();
         let complex = TypedTensor::from_vec_col_major(values.shape().to_vec(), complex)?;
-        Ok(self.boson_matsubara.fit_nd(None, &complex, 0)?)
+        from_ir(self.boson_matsubara.fit_nd(None, &to_ir(&complex)?, 0)?)
     }
 
     /// Bosonic coefficients `(size, ...)` -> `lambda(tau) / T` on the τ points `(ntau, ...)`.
@@ -236,7 +257,7 @@ impl IrSampling {
         &self,
         coeffs: &TypedTensor<f64>,
     ) -> Result<TypedTensor<f64>, Error> {
-        let tau = self.boson_tau.evaluate_nd(None, coeffs, 0)?;
+        let tau = from_ir(self.boson_tau.evaluate_nd(None, &to_ir(coeffs)?, 0)?)?;
         let scaled: Vec<f64> = tau
             .as_slice()?
             .iter()
@@ -267,13 +288,12 @@ impl IrSampling {
             })
             .collect();
         let values = TypedTensor::from_vec_col_major(f.shape().to_vec(), values)?;
-        Ok(self.matsubara.fit_nd(None, &values, 0)?)
+        from_ir(self.matsubara.fit_nd(None, &to_ir(&values)?, 0)?)
     }
 
     fn to_tau(&self, f: &TypedTensor<f64>, parity: Parity) -> Result<TypedTensor<f64>, Error> {
-        Ok(self
-            .tau
-            .evaluate_nd(None, &self.coefficients(f, parity)?, 0)?)
+        let coeffs = self.coefficients(f, parity)?;
+        from_ir(self.tau.evaluate_nd(None, &to_ir(&coeffs)?, 0)?)
     }
 
     fn back_from_tau(
@@ -281,16 +301,17 @@ impl IrSampling {
         c_tau: &TypedTensor<f64>,
         parity: Parity,
     ) -> Result<TypedTensor<f64>, Error> {
-        let mut coeffs = self.tau.fit_nd(None, c_tau, 0)?;
+        let mut coeffs = self.tau.fit_nd(None, &to_ir(c_tau)?, 0)?;
         if self.drop_last {
             let size = self.u_zero.len();
-            let mut data = coeffs.as_slice()?.to_vec();
+            let mut data = coeffs.as_slice().map_err(sparse_ir::Error::from)?.to_vec();
             for column in data.chunks_exact_mut(size) {
                 column[size - 1] = 0.0;
             }
-            coeffs = TypedTensor::from_vec_col_major(coeffs.shape().to_vec(), data)?;
+            coeffs = sparse_ir::TypedTensor::from_vec_col_major(coeffs.shape().to_vec(), data)
+                .map_err(sparse_ir::Error::from)?;
         }
-        let c = self.matsubara.evaluate_nd(None, &coeffs, 0)?;
+        let c = from_ir(self.matsubara.evaluate_nd(None, &coeffs, 0)?)?;
         let out: Vec<f64> = c
             .as_slice()?
             .iter()
@@ -420,7 +441,7 @@ pub struct IrStateSum {
     sampling: IrSampling,
     /// `L_{ss'}(tau) / T`, shape `(ntau, nstates, nstates)`.
     kernel_tau: TypedTensor<f64>,
-    backend: CpuBackend,
+    backend: CpuEngine,
     cut: Option<f64>,
 }
 
@@ -448,12 +469,12 @@ impl IrStateSum {
     /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
     ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.05, weight: 0.025 }] };
     /// let set = IrBasisSet::new(1e3, 1e-10)?;
-    /// let sum = IrStateSum::new(tenferro_cpu::CpuBackend::new(), &set, &m, 0.002, &IrSettings::default())?;
+    /// let sum = IrStateSum::new(tenferro_cpu::CpuEngine::new(tenferro_cpu::Pool::builder().build().unwrap()), &set, &m, 0.002, &IrSettings::default())?;
     /// assert!(!sum.indices().is_empty());
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
     pub fn new(
-        backend: CpuBackend,
+        backend: CpuEngine,
         set: &IrBasisSet,
         model: &AnisotropicModel,
         temperature: f64,
@@ -467,7 +488,7 @@ impl IrStateSum {
             None => {
                 // L[s, s', l] -> (l, s, s') for the fit along the bosonic axis.
                 let kernel = model.kernel_matsubara(&nu)?;
-                let kernel = backend.with_backend_session(|s| [&kernel].einsum("sql->lsq", s))?;
+                let kernel = [&kernel].einsum("sql->lsq", &mut backend)?;
                 sampling.kernel_tau(&kernel)?
             }
             Some(cut) => cut_kernel_tau(&sampling, model, &nu, cut)?,
@@ -535,9 +556,7 @@ impl IrStateSum {
         f_tau: &TypedTensor<f64>,
         parity: Parity,
     ) -> Result<TypedTensor<f64>, Error> {
-        let c_tau = self
-            .backend
-            .with_backend_session(|s| [&self.kernel_tau, f_tau].einsum("tsq,tq->ts", s))?;
+        let c_tau = [&self.kernel_tau, f_tau].einsum("tsq,tq->ts", &mut self.backend)?;
         self.sampling.back_from_tau(&c_tau, parity)
     }
 }
@@ -620,15 +639,10 @@ impl StateFrequencySum for IrStateSum {
             }
         }
         let shape = cz.shape().to_vec();
-        let tz = self.sampling.tau.evaluate_nd(
-            None,
-            &TypedTensor::from_vec_col_major(shape.clone(), dz)?,
-            0,
-        )?;
-        let tx =
-            self.sampling
-                .tau
-                .evaluate_nd(None, &TypedTensor::from_vec_col_major(shape, dx)?, 0)?;
+        let dz = to_ir(&TypedTensor::from_vec_col_major(shape.clone(), dz)?)?;
+        let tz = from_ir(self.sampling.tau.evaluate_nd(None, &dz, 0)?)?;
+        let dx = to_ir(&TypedTensor::from_vec_col_major(shape, dx)?)?;
+        let tx = from_ir(self.sampling.tau.evaluate_nd(None, &dx, 0)?)?;
         Ok((
             self.convolve_tau(&tz, Parity::Odd)?,
             self.convolve_tau(&tx, Parity::Even)?,

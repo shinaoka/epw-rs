@@ -4,6 +4,7 @@
 
 use eliashberg::*;
 use std::path::Path;
+use tenferro_cpu::{CpuEngine, Pool};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/mgb2_epw_super/iso");
@@ -25,12 +26,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         mixing: 0.3,
         initial_gap: 0.004,
     };
-    let kernel = |nu: &[f64]| spectrum.lambda_matsubara(&mut tenferro_cpu::CpuBackend::new(), nu);
+    let kernel = |nu: &[f64]| {
+        spectrum.lambda_matsubara(&mut CpuEngine::new(Pool::builder().build().unwrap()), nu)
+    };
 
     let start = std::time::Instant::now();
     let set = IrBasisSet::new(1e5, 1e-10)?;
     let mut ir = IrSum::new(&set, t, &IrSettings::default(), kernel)?;
-    let sol_ir = solve_isotropic_fbw(&mut tenferro_cpu::CpuBackend::new(), &mut ir, &dos, &params)?;
+    let sol_ir = solve_isotropic_fbw(
+        &mut CpuEngine::new(Pool::builder().build().unwrap()),
+        &mut ir,
+        &dos,
+        &params,
+    )?;
     println!(
         "IR (Lambda 1e5, eps 1e-10): {} frequencies, {} iterations, {:.2} s",
         ir.indices().len(),
@@ -48,9 +56,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for wscut in [0.5, 2.0, 8.0, 32.0] {
         let start = std::time::Instant::now();
         let n = frequencies_below(wscut, t);
-        let mut uniform = UniformSum::new(tenferro_cpu::CpuBackend::new(), t, n, kernel)?;
+        let mut uniform = UniformSum::new(
+            CpuEngine::new(Pool::builder().build().unwrap()),
+            t,
+            n,
+            kernel,
+        )?;
         let sol = solve_isotropic_fbw(
-            &mut tenferro_cpu::CpuBackend::new(),
+            &mut CpuEngine::new(Pool::builder().build().unwrap()),
             &mut uniform,
             &dos,
             &params,
