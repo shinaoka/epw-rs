@@ -15,9 +15,9 @@
 //! comes first and `rows` batches independent functions.
 
 use crate::Error;
-use tenferro_cpu::CpuBackend;
+use tenferro_cpu::CpuEngine;
 use tenferro_einsum::TypedTensorEinsumExt;
-use tenferro_tensor::{BackendSessionHost, TypedTensor};
+use tenferro_tensor::TypedTensor;
 
 /// Parity of a fermionic function under `omega -> -omega`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,7 +87,7 @@ pub struct UniformSum {
     indices: Vec<i64>,
     k_minus: TypedTensor<f64>,
     k_plus: TypedTensor<f64>,
-    backend: CpuBackend,
+    backend: CpuEngine,
 }
 
 impl UniformSum {
@@ -104,14 +104,14 @@ impl UniformSum {
     /// ```
     /// use eliashberg::{FrequencySum, Parity, UniformSum};
     /// // Constant kernel: sum_{|m| < N} f(m) for an even f = 1 gives 2N.
-    /// let mut sum = UniformSum::new(tenferro_cpu::CpuBackend::new(), 0.01, 4, |nu| Ok(vec![1.0; nu.len()]))?;
+    /// let mut sum = UniformSum::new(tenferro_cpu::CpuEngine::new(tenferro_cpu::Pool::builder().build().unwrap()), 0.01, 4, |nu| Ok(vec![1.0; nu.len()]))?;
     /// let ones = tenferro_tensor::TypedTensor::from_vec_col_major(vec![4, 1], vec![1.0; 4])?;
     /// let c = sum.convolve(&ones, Parity::Even)?;
     /// assert_eq!(c.as_slice()?, &[8.0; 4]);
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
     pub fn new(
-        backend: CpuBackend,
+        backend: CpuEngine,
         temperature: f64,
         nfreq: usize,
         kernel: impl FnOnce(&[f64]) -> Result<Vec<f64>, Error>,
@@ -158,9 +158,7 @@ impl FrequencySum for UniformSum {
             Parity::Odd => &self.k_minus,
             Parity::Even => &self.k_plus,
         };
-        Ok(self
-            .backend
-            .with_backend_session(|s| [kernel, f].einsum("nm,mr->nr", s))?)
+        Ok([kernel, f].einsum("nm,mr->nr", &mut self.backend)?)
     }
 
     fn sum_even(&mut self, f: &TypedTensor<f64>) -> Result<Vec<f64>, Error> {
@@ -169,9 +167,7 @@ impl FrequencySum for UniformSum {
             vec![self.indices.len()],
             vec![2.0; self.indices.len()],
         )?;
-        let out = self
-            .backend
-            .with_backend_session(|s| [f, &twos].einsum("mr,m->r", s))?;
+        let out = [f, &twos].einsum("mr,m->r", &mut self.backend)?;
         Ok(out.as_slice()?.to_vec())
     }
 }

@@ -14,9 +14,9 @@
 
 use crate::matsubara::{fermionic_frequency, Parity};
 use crate::Error;
-use tenferro_cpu::CpuBackend;
+use tenferro_cpu::{CpuEngine, Pool};
 use tenferro_einsum::TypedTensorEinsumExt;
-use tenferro_tensor::{BackendSessionHost, TypedTensor};
+use tenferro_tensor::TypedTensor;
 
 /// Matsubara convolutions coupling states through a kernel matrix `L_{ss'}(i nu)`.
 pub trait StateFrequencySum {
@@ -152,7 +152,7 @@ pub struct UniformStateSum {
     indices: Vec<i64>,
     /// `L[s, s', l]` at `nu_l = 2 l pi T`, `l = 0..2N-1`.
     kernel: TypedTensor<f64>,
-    backend: CpuBackend,
+    backend: CpuEngine,
 }
 
 impl UniformStateSum {
@@ -168,12 +168,12 @@ impl UniformStateSum {
     /// use eliashberg::*;
     /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
     ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.1, weight: 0.05 }] };
-    /// let sum = UniformStateSum::new(tenferro_cpu::CpuBackend::new(), &m, 0.01, 8)?;
+    /// let sum = UniformStateSum::new(tenferro_cpu::CpuEngine::new(tenferro_cpu::Pool::builder().build().unwrap()), &m, 0.01, 8)?;
     /// assert_eq!(sum.indices().len(), 8);
     /// # Ok::<(), eliashberg::Error>(())
     /// ```
     pub fn new(
-        backend: CpuBackend,
+        backend: CpuEngine,
         model: &AnisotropicModel,
         temperature: f64,
         nfreq: usize,
@@ -207,9 +207,7 @@ impl StateFrequencySum for UniformStateSum {
         let ns = self.kernel.shape()[0];
         check_shape(f, nf, ns)?;
         // G[s, l, m] = sum_{s'} L[s, s', l] f[m, s']
-        let g = self
-            .backend
-            .with_backend_session(|s| [&self.kernel, f].einsum("sql,mq->slm", s))?;
+        let g = [&self.kernel, f].einsum("sql,mq->slm", &mut self.backend)?;
         let g = g.as_slice()?;
         let nl = 2 * nf;
         let sign = match parity {
@@ -236,9 +234,7 @@ impl StateFrequencySum for UniformStateSum {
         let ns = self.kernel.shape()[0];
         check_shape(f, nf, ns)?;
         let twos = TypedTensor::from_vec_col_major(vec![nf], vec![2.0; nf])?;
-        let out = self
-            .backend
-            .with_backend_session(|s| [f, &twos].einsum("ms,m->s", s))?;
+        let out = [f, &twos].einsum("ms,m->s", &mut self.backend)?;
         Ok(out.as_slice()?.to_vec())
     }
 
@@ -251,9 +247,7 @@ impl StateFrequencySum for UniformStateSum {
             )));
         }
         let twos = TypedTensor::from_vec_col_major(vec![nf], vec![2.0; nf])?;
-        let out = self
-            .backend
-            .with_backend_session(|s| [f, &twos].einsum("mr,m->r", s))?;
+        let out = [f, &twos].einsum("mr,m->r", &mut self.backend)?;
         Ok(out.as_slice()?.to_vec())
     }
 }
@@ -361,7 +355,7 @@ impl AnisotropicSolution {
 /// // One state at E_F coupled to itself: reduces to an Einstein model.
 /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
 ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.05, weight: 0.025 }] };
-/// let mut sum = UniformStateSum::new(tenferro_cpu::CpuBackend::new(), &m, 0.001, 64)?;
+/// let mut sum = UniformStateSum::new(tenferro_cpu::CpuEngine::new(tenferro_cpu::Pool::builder().build().unwrap()), &m, 0.001, 64)?;
 /// let p = AnisotropicParams { mu_star: 0.0, conv_thr: 1e-8, max_iter: 5000, mixing: 0.5 };
 /// let sol = solve_anisotropic_fbw(&mut sum, &m, &p, |_| 0.005)?;
 /// assert!(sol.z[0] > 1.0);
@@ -393,7 +387,7 @@ pub fn solve_anisotropic_fbw(
 /// let m = AnisotropicModel { energies: vec![0.0], fs_weights: vec![1.0], coulomb: vec![0.0],
 ///     kernel_entries: vec![KernelEntry { s: 0, s_prime: 0, q: 0, omega: 0.05, weight: 0.025 }] };
 /// let c = CoulombStates { weight: 0.01, inside_counts: vec![1.0], outer: vec![(1.0, 2.0)] };
-/// let mut sum = UniformStateSum::new(tenferro_cpu::CpuBackend::new(), &m, 0.001, 64)?;
+/// let mut sum = UniformStateSum::new(tenferro_cpu::CpuEngine::new(tenferro_cpu::Pool::builder().build().unwrap()), &m, 0.001, 64)?;
 /// let p = AnisotropicParams { mu_star: 0.0, conv_thr: 1e-8, max_iter: 5000, mixing: 0.5 };
 /// let sol = solve_anisotropic_fbw_coulomb(&mut sum, &m, &p, |_| 0.005, Some(&c))?;
 /// assert!(sol.outer_gap[0] < 0.0); // repulsion gives the outer states the opposite sign
@@ -437,7 +431,11 @@ pub fn solve_anisotropic_fbw_coulomb(
         None => Vec::new(),
     };
     let mut previous = delta_in.clone();
-    let mut backend = CpuBackend::new();
+    let mut backend = CpuEngine::new(
+        Pool::builder()
+            .build()
+            .expect("cannot start the tenferro CPU pool"),
+    );
     let coulomb = TypedTensor::from_vec_col_major(vec![ns, ns], {
         // stored row-major (s, s'); column-major tensor index (s, s') = s + ns * s'
         let mut m = vec![0.0; ns * ns];
@@ -477,8 +475,7 @@ pub fn solve_anisotropic_fbw_coulomb(
         let (mu_term, outer_out): (Vec<f64>, Vec<f64>) = match coulomb_states {
             None => {
                 let d_sums = TypedTensor::from_vec_col_major(vec![ns], sum.sum_even(&d_src)?)?;
-                let m =
-                    backend.with_backend_session(|s| [&coulomb, &d_sums].einsum("sq,q->s", s))?;
+                let m = [&coulomb, &d_sums].einsum("sq,q->s", &mut backend)?;
                 (
                     m.as_slice()?.iter().map(|v| params.mu_star * v).collect(),
                     Vec::new(),

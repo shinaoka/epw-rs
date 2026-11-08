@@ -28,7 +28,7 @@ QE 7.6（EPW 6.1）の `test-suite/epw_metal` から作った fixture（[tests/f
 ## 設計判断
 
 - **クレート分割：** [crate_design_ja.md](crate_design_ja.md) §5 の第 1 段に従い，`phys-units`，`eph-comm`，`smearing`，`bz-mesh`，`eph-wannier-data`，`eph-io-epw`，`wannier-interp`，`eph-selfen`，`eph-driver` の 9 クレートにしました．各クレートは Pb に要る部分だけを持ちます．すべて `publish = false` です．
-- **tenferro-rs：** crates.io の 0.7.1 を使います．host の `TypedTensor` と，backend session での直接実行（AD なし）です．配列はすべて column-major です．
+- **tenferro-rs：** crates.io の 0.10.0 を使います．host の `TypedTensor` と，`CpuEngine`（実行用のプールを持つ `CpuEngine`）での直接実行（AD なし）です．配列はすべて column-major です．
   - **R → k の Fourier 和：** WS ベクトル R を細かい格子に畳み込んで（R mod N），3 次元の逆 FFT（`tenferro-fft`）を取ります．格子点 k では e^{2πik·R} が畳み込んだ位置の位相と一致するので，畳み込みは近似ではなく厳密です．直接和との一致を `wannier-interp/tests/fourier.rs` で確認しています（|HU − UE| < 1e-12 Ry）．
   - **Rₚ → q：** q ブロックごとに位相行列を作り，einsum で縮約します．Rₚ は `EphMatrixSource` からブロックで読みます（EPW の `etf_mem = 1` 相当）．ディスクから逐次読む実装（`EpmatwpFile`）と全部メモリに載せる実装の結果は一致します．
   - **Bloch 基底とモード基底への回転：** `U_{k+q}† g̃ U_k` とモード変位 u_ν を，2 項の einsum を 3 回で縮約します．

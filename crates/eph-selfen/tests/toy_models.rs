@@ -2,6 +2,7 @@
 
 use eph_selfen::*;
 use num_complex::Complex64;
+use tenferro_cpu::{CpuEngine, Pool};
 
 /// lambda = 2 int alpha^2F / omega for a set of Einstein-like modes.
 #[test]
@@ -22,8 +23,13 @@ fn integrated_lambda_matches_sum() {
         sigma_step: 5e-5,
         eps_acoustic: 1e-8,
     };
-    let a2f =
-        eliashberg_function(&mut tenferro_cpu::CpuBackend::new(), &lws, 1.0, &params).unwrap();
+    let a2f = eliashberg_function(
+        &mut CpuEngine::new(Pool::builder().build().unwrap()),
+        &lws,
+        1.0,
+        &params,
+    )
+    .unwrap();
     assert!((a2f.lambda - 1.0).abs() < 1e-14);
     for (s, l) in a2f.lambda_integrated.iter().enumerate() {
         assert!((l - 1.0).abs() < 2e-3, "smearing {s}: {l}");
@@ -55,7 +61,13 @@ fn constant_coupling_single_pair() {
         energies_kq: &[e_kq],
         weights: &[2.0],
     };
-    let lw = phonon_linewidth(&mut tenferro_cpu::CpuBackend::new(), &data, &fs, &params).unwrap();
+    let lw = phonon_linewidth(
+        &mut CpuEngine::new(Pool::builder().build().unwrap()),
+        &data,
+        &fs,
+        &params,
+    )
+    .unwrap();
     let f = |e: f64| smearing::fermi_dirac(e, params.temperature);
     let gauss = (-((e_kq - e_k - omega) / params.sigma).powi(2)).exp()
         / (std::f64::consts::PI.sqrt() * params.sigma);
@@ -93,7 +105,13 @@ fn degenerate_average_and_acoustic_cut() {
         energies_kq: &[0.001],
         weights: &[2.0],
     };
-    let lw = phonon_linewidth(&mut tenferro_cpu::CpuBackend::new(), &data, &fs, &params).unwrap();
+    let lw = phonon_linewidth(
+        &mut CpuEngine::new(Pool::builder().build().unwrap()),
+        &data,
+        &fs,
+        &params,
+    )
+    .unwrap();
     assert_eq!(lw.gamma[0], 0.0);
     assert_eq!(lw.lambda[0], 0.0);
     assert_eq!(lw.gamma[1], lw.gamma[2]);

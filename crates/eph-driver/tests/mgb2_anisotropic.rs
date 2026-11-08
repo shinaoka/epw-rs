@@ -8,6 +8,7 @@ use eliashberg::*;
 use eph_driver::supercond::{anisotropic_problem, EpwAnisotropicProblem};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use tenferro_cpu::{CpuEngine, Pool};
 
 const MU_STAR: f64 = 0.16;
 const WSCUT: f64 = 0.5;
@@ -78,7 +79,7 @@ fn uniform_grid_matches_epw() {
     for (itemp, (t, label)) in [(20.0, "020.00"), (30.0, "030.00")].into_iter().enumerate() {
         let tk = kelvin(t);
         let mut sum = UniformStateSum::new(
-            tenferro_cpu::CpuBackend::new(),
+            CpuEngine::new(Pool::builder().build().unwrap()),
             &p.model,
             tk,
             frequencies_below(WSCUT, tk),
@@ -154,8 +155,14 @@ fn ir_against(kind: &str, cut: Option<f64>) {
     let set = IrBasisSet::new(ir.lambda, ir.epsilon).unwrap();
     for (t, label) in [(20.0, "020.00"), (30.0, "030.00")] {
         let tk = kelvin(t);
-        let mut sum =
-            IrStateSum::new(tenferro_cpu::CpuBackend::new(), &set, &p.model, tk, &points).unwrap();
+        let mut sum = IrStateSum::new(
+            CpuEngine::new(Pool::builder().build().unwrap()),
+            &set,
+            &p.model,
+            tk,
+            &points,
+        )
+        .unwrap();
         let sol = solve_anisotropic_fbw(&mut sum, &p.model, &PARAMS, |_| 0.004).unwrap();
         let rows = reference(kind, label);
         let (nf, ns) = (sol.omega.len(), p.model.nstates());
@@ -220,7 +227,7 @@ fn ir_with_coulomb_matches_epw() {
     for (itemp, (t, label)) in [(20.0, "020.00"), (30.0, "030.00")].into_iter().enumerate() {
         let tk = kelvin(t);
         let mut sum = IrStateSum::new(
-            tenferro_cpu::CpuBackend::new(),
+            CpuEngine::new(Pool::builder().build().unwrap()),
             &set,
             &p.model,
             tk,
@@ -384,7 +391,7 @@ fn pade_uniform_matches_epw() {
     for (itemp, (t, label)) in [(20.0, "020.00"), (30.0, "030.00")].into_iter().enumerate() {
         let tk = kelvin(t);
         let mut sum = UniformStateSum::new(
-            tenferro_cpu::CpuBackend::new(),
+            CpuEngine::new(Pool::builder().build().unwrap()),
             &p.model,
             tk,
             frequencies_below(WSCUT, tk),
@@ -424,7 +431,7 @@ fn pade_ir_matches_epw() {
     for (itemp, (t, label)) in [(20.0, "020.00"), (30.0, "030.00")].into_iter().enumerate() {
         let tk = kelvin(t);
         let mut sum = IrStateSum::new(
-            tenferro_cpu::CpuBackend::new(),
+            CpuEngine::new(Pool::builder().build().unwrap()),
             &set,
             &p.model,
             tk,

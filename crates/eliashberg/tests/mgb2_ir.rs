@@ -7,6 +7,7 @@
 
 use eliashberg::*;
 use std::path::Path;
+use tenferro_cpu::{CpuEngine, Pool};
 
 fn inputs() -> (EliashbergSpectrum, ElectronDos) {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/mgb2_epw_super/iso");
@@ -34,14 +35,16 @@ const PARAMS: IsotropicParams = IsotropicParams {
 fn ir_solution_is_basis_independent_and_approached_by_uniform_grids() {
     let (spectrum, dos) = inputs();
     let t = 15.0 * phys_units::KELVIN_TO_EV;
-    let kernel = |nu: &[f64]| spectrum.lambda_matsubara(&mut tenferro_cpu::CpuBackend::new(), nu);
+    let kernel = |nu: &[f64]| {
+        spectrum.lambda_matsubara(&mut CpuEngine::new(Pool::builder().build().unwrap()), nu)
+    };
 
     let mut gaps = Vec::new();
     for lambda in [1e5, 1e6] {
         let set = IrBasisSet::new(lambda, 1e-6).unwrap();
         let mut sum = IrSum::new(&set, t, &IrSettings::default(), kernel).unwrap();
         let sol = solve_isotropic_fbw(
-            &mut tenferro_cpu::CpuBackend::new(),
+            &mut CpuEngine::new(Pool::builder().build().unwrap()),
             &mut sum,
             &dos,
             &PARAMS,
@@ -67,14 +70,14 @@ fn ir_solution_is_basis_independent_and_approached_by_uniform_grids() {
     let mut previous = f64::INFINITY;
     for wscut in [0.5, 2.0, 8.0] {
         let mut sum = UniformSum::new(
-            tenferro_cpu::CpuBackend::new(),
+            CpuEngine::new(Pool::builder().build().unwrap()),
             t,
             frequencies_below(wscut, t),
             kernel,
         )
         .unwrap();
         let sol = solve_isotropic_fbw(
-            &mut tenferro_cpu::CpuBackend::new(),
+            &mut CpuEngine::new(Pool::builder().build().unwrap()),
             &mut sum,
             &dos,
             &PARAMS,
